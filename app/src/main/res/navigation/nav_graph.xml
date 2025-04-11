@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/nav_clockin">
+
+    <fragment
+        android:id="@+id/nav_clockin"
+        android:name="tictacker.fragments.ClockInFragment"
+        android:label="@string/clock_in"
+        tools:layout="@layout/fragment_clock_in" />
+
+    <fragment
+        android:id="@+id/nav_history"
+        android:name="tictacker.fragments.HistoryFragment"
+        android:label="@string/history"
+        tools:layout="@layout/fragment_history" />
+
+    <fragment
+        android:id="@+id/nav_settings"
+        android:name="tictacker.fragments.SettingsFragment"
+        android:label="@string/settings"
+        tools:layout="@layout/fragment_settings" />
+</navigation>

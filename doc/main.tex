@@ -1,0 +1,137 @@
+\documentclass[12pt,oneside,letterpaper,spanish]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=2.25cm,headheight=26pt,includeheadfoot]{geometry}
+\usepackage[spanish]{babel}
+\usepackage{listings}
+\usepackage{color}
+\usepackage{titlesec}
+\usepackage{titling}
+\usepackage[framed, numbered]{matlab-prettifier}
+\usepackage{changepage}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage{caption}
+\usepackage{tocloft}
+\usepackage{setspace}
+\usepackage{multirow}
+\usepackage{titling}
+\usepackage{float}
+\usepackage{comment}
+\usepackage{booktabs}
+\usepackage{indentfirst}
+\usepackage{lscape}
+\usepackage{booktabs,caption}
+\usepackage[flushleft]{threeparttable}
+\usepackage[spanish]{nomencl}
+\usepackage{xcolor}
+\usepackage{lipsum}
+\usepackage{datetime2}
+\usepackage{subcaption}
+
+% --- Atributos generales ---
+\pagestyle{fancy}
+\fancyhf{}
+
+\setlength{\parindent}{2em}
+\title{TicTacker - Memoria del Proyecto} % to reference as \title, dont use \maketitle
+\author{Francisco Fernández Condado}
+\makeatletter\let\Title\@title\makeatother
+
+% --- Bloques de código ---
+\lstset{language=Matlab,
+style=Matlab-editor,
+basicstyle=\normalsize\mlttfamily,
+numbers=left,
+numberstyle={\scriptsize\color{black}},
+numbersep=0.5cm											
+}
+
+% --- Diseños del texto ---
+\newlist{steps}{enumerate}{1}
+\setlist[steps, 1]{leftmargin=1.5cm,label = Step \arabic*:}
+\renewcommand{\headrulewidth}{1pt}
+\renewcommand{\footrulewidth}{1pt}
+\renewcommand{\rmdefault}{ptm}
+\hypersetup{
+    hidelinks = true
+}
+
+% --- Encabezado y pie de página ---
+\rhead{Francisco Fernández}
+\lhead{\Title}
+\setlength\headheight{16pt}
+\setlength{\footskip}{50pt}
+\lhead{\Title} %rightH title
+\cfoot{\thepage}
+
+
+
+
+% --- Documento ---
+
+% --- Portada ---
+\begin{document}
+\input{sources/0_portada.tex}
+
+% --- Índices ---
+\newpage
+\doublespacing
+%\addcontentsline{toc}{section}{Índice}
+\renewcommand{\baselinestretch}{1}\normalsize
+\tableofcontents
+\renewcommand{\baselinestretch}{1}\normalsize
+%\singlespacing
+\thispagestyle{fancy} % force page style
+
+%\newpage
+%\listoffigures
+%\thispagestyle{fancy}
+
+%\newpage
+%\listoftables
+%\thispagestyle{fancy}
+
+\newpage
+
+\section{Introducción} \label{ch1}
+\input{sources/1_introduccion.tex}
+
+\section{Elementos utilizados y funcionalidades} \label{ch2}
+\input{sources/2_elementos.tex} 
+
+\section{Clases, estructura y bases de datos de la aplicación} \label{ch3}
+\input{sources/3_clases.tex}
+
+\section{Manual de usuario de TicTacker} \label{ch4}
+\input{sources/4_manual.tex}
+
+\section{Dificultades encontradas al realizar el proyecto} \label{ch5}
+\input{sources/5_dificultades.tex}
+
+\section{Fuentes y referencias utilizadas} \label{ch6}
+\input{sources/6_fuentes.tex}
+
+\label{EndOfText}
+
+% --- Nomenclaturas ---
+%\newpage
+%\addcontentsline{toc}{section}{Nomenclature}
+%\input{sources/9_nomenclat.tex}
+
+% --- Referencias y bibliografía ---
+%\newpage
+%\addcontentsline{toc}{section}{Referencias}
+%\bibliography{document.bib} 
+%\bibliographystyle{ieeetr}
+
+% --- Apéndices ---
+%\newpage
+%\section{Appendix A} \label{ch6}
+
+\label{endOfDoc}
+\end{document}
