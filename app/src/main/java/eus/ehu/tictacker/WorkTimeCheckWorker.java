@@ -24,47 +24,33 @@ public class WorkTimeCheckWorker extends Worker {
         Context appContext = getApplicationContext();
 
         try {
-            // Comprobar si las notificaciones están habilitadas
-            if (!notificationHelper.areNotificationsEnabled()) {
-                Log.d(TAG, "Notificaciones no activadas");
-                return Result.success();
-            }
-
-            // Comprobar si han pasado los 10 mins
-            if (!notificationHelper.shouldSendNotification(appContext)) {
-                Log.d(TAG, "Notificación muy cerca de la anterior");
+            if (!notificationHelper.areNotificationsEnabled() ||
+                    !notificationHelper.shouldSendNotification(appContext)) {
                 return Result.success();
             }
 
             String username = dbHelper.getCurrentUsername(appContext);
-            List<Fichaje> todaysFichajes = dbHelper.obtenerFichajesDeHoy(username);
-            float[] settings = dbHelper.getSettings();
-            float weeklyHours = settings[0];
-            int workingDays = (int) settings[1];
+            dbHelper.obtenerFichajesDeHoy(username, todaysFichajes -> {
+                dbHelper.getSettings(settings -> {
+                    float weeklyHours = settings[0] <= 0 ? 40 : settings[0];
+                    int workingDays = (int) (settings[1] <= 0 ? 5 : settings[1]);
 
-            // Valores por defecto
-            if (weeklyHours <= 0) weeklyHours = 40;
-            if (workingDays <= 0) workingDays = 5;
+                    float dailyHours = WorkTimeCalculator.calculateDailyHours(weeklyHours, workingDays);
+                    long[] timeWorked = WorkTimeCalculator.getTimeWorkedToday(todaysFichajes);
+                    long[] timeRemaining = WorkTimeCalculator.getRemainingTime(timeWorked, dailyHours);
 
-            float dailyHours = WorkTimeCalculator.calculateDailyHours(weeklyHours, workingDays);
-            long[] timeWorked = WorkTimeCalculator.getTimeWorkedToday(todaysFichajes);
-            long[] timeRemaining = WorkTimeCalculator.getRemainingTime(timeWorked, dailyHours);
+                    boolean isClockedIn = WorkTimeCalculator.isCurrentlyClockedIn(todaysFichajes);
 
-            boolean isClockedIn = WorkTimeCalculator.isCurrentlyClockedIn(todaysFichajes);
-
-            Log.d(TAG, "Tiempo trabajado: " + timeWorked[0] + ":" + timeWorked[1]);
-            Log.d(TAG, "Tiempo restante: " + timeRemaining[2] + " (-1)");
-            Log.d(TAG, "Estado fichaje: " + isClockedIn);
-
-            // Envío de notificación si se entra en horas extra (timeRemaining[2] == 1) o se alcanza tiempo (timeRemaining[0] == 0 && timeRemaining[1] == 0)
-            if (isClockedIn && (timeRemaining[2] == 1 || (timeRemaining[0] == 0 && timeRemaining[1] <= 1))) {
-                Log.d(TAG, "Envío de notificación");
-                notificationHelper.sendWorkCompleteNotification();
-            }
+                    if (isClockedIn && (timeRemaining[2] == 1 ||
+                            (timeRemaining[0] == 0 && timeRemaining[1] <= 1))) {
+                        notificationHelper.sendWorkCompleteNotification();
+                    }
+                });
+            });
 
             return Result.success();
         } catch (Exception e) {
-            Log.e(TAG, "Error del WorkTimeCheckWorker", e);
+            Log.e(TAG, "Error en WorkTimeCheckWorker", e);
             return Result.failure();
         }
     }

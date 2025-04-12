@@ -7,19 +7,19 @@
 
     <fragment
         android:id="@+id/nav_clockin"
-        android:name="tictacker.fragments.ClockInFragment"
+        android:name="eus.ehu.tictacker.fragments.ClockInFragment"
         android:label="@string/clock_in"
         tools:layout="@layout/fragment_clock_in" />
 
     <fragment
         android:id="@+id/nav_history"
-        android:name="tictacker.fragments.HistoryFragment"
+        android:name="eus.ehu.tictacker.fragments.HistoryFragment"
         android:label="@string/history"
         tools:layout="@layout/fragment_history" />
 
     <fragment
         android:id="@+id/nav_settings"
-        android:name="tictacker.fragments.SettingsFragment"
+        android:name="eus.ehu.tictacker.fragments.SettingsFragment"
         android:label="@string/settings"
         tools:layout="@layout/fragment_settings" />
 </navigation>

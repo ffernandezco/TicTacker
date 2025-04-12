@@ -92,4 +92,7 @@
     <string name="confirm_pass">Confirm password</string>
     <string name="new_account">Don\'t have an account? Sign up</string>
     <string name="have_account">Already have an account? Log in</string>
+    <string name="settings_save_error">Error al guardar configuración</string>
+    <string name="history_delete_error">Error al borrar el historial</string>
+    <string name="fichaje_update_error">Error al actualizar el fichaje</string>
 </resources>

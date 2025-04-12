@@ -57,7 +57,6 @@ public class SettingsFragment extends Fragment {
     private Button btnLogout;
     private static final int PICK_IMAGE_REQUEST = 1001;
 
-
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -80,29 +79,18 @@ public class SettingsFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         dbHelper = new DatabaseHelper(requireContext());
-
-        // Inicializar vistas
         initializeViews(view);
 
-        // Configurar spinner de idioma
         String[] languages = {"Español", "English"};
         ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(),
                 android.R.layout.simple_spinner_dropdown_item, languages);
         spinnerLanguage.setAdapter(adapter);
 
-        // Cargar configuración guardada
         loadSavedSettings();
-
-        // Configurar botones de horas y minutos
         setupNumberPickers();
 
-        // Listener para el botón de guardar
         btnSave.setOnClickListener(v -> saveSettings());
-
-        // Listener para eliminar historial
         btnDeleteHistory.setOnClickListener(v -> showDeleteConfirmationDialog());
-
-        btnLogout = view.findViewById(R.id.btnLogout);
         btnLogout.setOnClickListener(v -> logoutUser());
 
         loadCustomLogo();
@@ -124,6 +112,12 @@ public class SettingsFragment extends Fragment {
             selectedLogoUri = null;
             Toast.makeText(requireContext(), R.string.logo_reset, Toast.LENGTH_SHORT).show();
         });
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        dbHelper.close();
     }
 
     private void initializeViews(View view) {
@@ -160,7 +154,6 @@ public class SettingsFragment extends Fragment {
         btnResetLogo = view.findViewById(R.id.btnResetLogo);
     }
 
-    // Números dinámicos para las horas y minutos de la jornada
     private void setupNumberPickers() {
         btnIncreaseHours.setOnClickListener(v -> {
             if (selectedHours < MAX_HOURS) {
@@ -181,7 +174,7 @@ public class SettingsFragment extends Fragment {
             if (selectedMinutes > MAX_MINUTES) {
                 selectedMinutes = MIN_MINUTES;
                 if (selectedHours < MAX_HOURS) {
-                    selectedHours++; // Sumar una hora para minutos > 60
+                    selectedHours++;
                     updateHoursDisplay();
                 }
             }
@@ -193,7 +186,7 @@ public class SettingsFragment extends Fragment {
             if (selectedMinutes < MIN_MINUTES) {
                 selectedMinutes = MAX_MINUTES;
                 if (selectedHours > MIN_HOURS) {
-                    selectedHours--; // Restar una hora para minutos < 0
+                    selectedHours--;
                     updateHoursDisplay();
                 }
             }
@@ -214,14 +207,16 @@ public class SettingsFragment extends Fragment {
         String lang = prefs.getString("language", "es");
         spinnerLanguage.setSelection(lang.equals("es") ? 0 : 1);
 
-        float[] settings = dbHelper.getSettings();
+        dbHelper.getSettings(settings -> {
+            selectedHours = (int) settings[0];
+            selectedMinutes = Math.round((settings[0] - selectedHours) * 60 / MINUTE_INCREMENT) * MINUTE_INCREMENT;
 
-        selectedHours = (int) settings[0];
-        selectedMinutes = Math.round((settings[0] - selectedHours) * 60 / MINUTE_INCREMENT) * MINUTE_INCREMENT;
-
-        updateHoursDisplay();
-        updateMinutesDisplay();
-        setSelectedDays((int) settings[1]);
+            requireActivity().runOnUiThread(() -> {
+                updateHoursDisplay();
+                updateMinutesDisplay();
+                setSelectedDays((int) settings[1]);
+            });
+        });
     }
 
     private void setSelectedDays(int days) {
@@ -235,7 +230,6 @@ public class SettingsFragment extends Fragment {
 
     private void saveSettings() {
         String selectedLanguage = spinnerLanguage.getSelectedItemPosition() == 0 ? "es" : "en";
-
         float weeklyHours = selectedHours + (selectedMinutes / 60.0f);
         int workingDays = countSelectedDays();
 
@@ -252,9 +246,14 @@ public class SettingsFragment extends Fragment {
         }
 
         saveLanguagePreference(selectedLanguage);
-        dbHelper.saveSettings(weeklyHours, workingDays);
-        setAppLocale(selectedLanguage);
-        restartApp();
+        dbHelper.saveSettings(weeklyHours, workingDays, success -> {
+            if (success) {
+                setAppLocale(selectedLanguage);
+                restartApp();
+            } else {
+                Toast.makeText(requireContext(), R.string.settings_save_error, Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private int countSelectedDays() {
@@ -280,7 +279,6 @@ public class SettingsFragment extends Fragment {
         requireContext().getResources().updateConfiguration(config, requireContext().getResources().getDisplayMetrics());
     }
 
-    // Reinicia app para aplicar cambios en configuración
     private void restartApp() {
         Intent intent = new Intent(requireContext(), MainActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
@@ -289,17 +287,20 @@ public class SettingsFragment extends Fragment {
     }
 
     private void showDeleteConfirmationDialog() {
-        androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(requireContext());
-        builder.setTitle(getString(R.string.confirm_delete_title))
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle(getString(R.string.confirm_delete_title))
                 .setMessage(getString(R.string.confirm_delete_message))
                 .setPositiveButton(getString(R.string.confirming), (dialog, which) -> {
                     String username = dbHelper.getCurrentUsername(requireContext());
-                    dbHelper.deleteAllFichajes(username);
-                    Toast.makeText(requireContext(), getString(R.string.history_deleted), Toast.LENGTH_SHORT).show();
+                    dbHelper.deleteAllFichajes(username, success -> {
+                        if (success) {
+                            Toast.makeText(requireContext(), getString(R.string.history_deleted), Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(requireContext(), getString(R.string.history_delete_error), Toast.LENGTH_SHORT).show();
+                        }
+                    });
                 })
-                .setNegativeButton(getString(R.string.no), (dialog, which) -> {
-                    dialog.dismiss();
-                })
+                .setNegativeButton(getString(R.string.no), (dialog, which) -> dialog.dismiss())
                 .setCancelable(true)
                 .show();
     }
@@ -314,7 +315,6 @@ public class SettingsFragment extends Fragment {
                 ivLogoPreview.setImageURI(selectedLogoUri);
             } catch (Exception e) {
                 e.printStackTrace();
-                // Logo por defecto en caso de error
                 ivLogoPreview.setImageResource(R.mipmap.ic_launcher_adaptive_fore);
             }
         } else {
@@ -338,13 +338,11 @@ public class SettingsFragment extends Fragment {
     }
 
     private void logoutUser() {
-        // Limpiar sesión
         SharedPreferences sharedPreferences = requireActivity().getSharedPreferences("app_prefs", requireContext().MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPreferences.edit();
         editor.remove("usuario_actual");
         editor.apply();
 
-        // Redirigir a pantalla de login
         Intent intent = new Intent(requireContext(), LoginActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);

@@ -64,7 +64,7 @@ public class HistoryFragment extends Fragment implements FichajeDetailsDialog.On
         btnImport = view.findViewById(R.id.btnImport);
 
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
-        adapter = new FichajeAdapter(fichaje -> showFichajeDetails(fichaje));
+        adapter = new FichajeAdapter(this::showFichajeDetails);
         recyclerView.setAdapter(adapter);
 
         setupActivityResultLaunchers();
@@ -75,8 +75,13 @@ public class HistoryFragment extends Fragment implements FichajeDetailsDialog.On
         actualizarLista();
     }
 
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        dbHelper.close();
+    }
+
     private void setupActivityResultLaunchers() {
-        // Permitir importar archivos
         importFileLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
@@ -89,7 +94,6 @@ public class HistoryFragment extends Fragment implements FichajeDetailsDialog.On
                 }
         );
 
-        // Exportar archivos
         exportFileLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
@@ -111,22 +115,22 @@ public class HistoryFragment extends Fragment implements FichajeDetailsDialog.On
 
     private void actualizarLista() {
         String username = dbHelper.getCurrentUsername(requireContext());
-        List<Fichaje> fichajes = dbHelper.obtenerTodosLosFichajes(username);
-        adapter.setFichajes(fichajes);
+        dbHelper.obtenerTodosLosFichajes(username, fichajes -> {
+            adapter.setFichajes(fichajes);
 
-        // Estado vacío si no hay fichajes guardados
-        if (fichajes.isEmpty()) {
-            recyclerView.setVisibility(View.GONE);
-            tvEmptyHistory.setVisibility(View.VISIBLE);
-        } else {
-            recyclerView.setVisibility(View.VISIBLE);
-            tvEmptyHistory.setVisibility(View.GONE);
-        }
+            if (fichajes.isEmpty()) {
+                recyclerView.setVisibility(View.GONE);
+                tvEmptyHistory.setVisibility(View.VISIBLE);
+            } else {
+                recyclerView.setVisibility(View.VISIBLE);
+                tvEmptyHistory.setVisibility(View.GONE);
+            }
+        });
     }
 
     private void showFichajeDetails(Fichaje fichaje) {
-        FichajeDetailsDialog dialog = new FichajeDetailsDialog(fichaje, this);
-        dialog.show(getParentFragmentManager(), "FichajeDetailsDialog");
+        new FichajeDetailsDialog(fichaje, this)
+                .show(getParentFragmentManager(), "FichajeDetailsDialog");
     }
 
     @Override
@@ -139,7 +143,6 @@ public class HistoryFragment extends Fragment implements FichajeDetailsDialog.On
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.setType("text/csv");
 
-        // Generar CSV asociado
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault());
         String fileName = "fichajes_" + sdf.format(new Date()) + ".csv";
         intent.putExtra(Intent.EXTRA_TITLE, fileName);
@@ -156,37 +159,35 @@ public class HistoryFragment extends Fragment implements FichajeDetailsDialog.On
     }
 
     private void processExportFile(Uri uri) {
-        try {
-            String username = dbHelper.getCurrentUsername(requireContext());
-            List<Fichaje> fichajes = dbHelper.obtenerTodosLosFichajes(username);
+        String username = dbHelper.getCurrentUsername(requireContext());
+        dbHelper.obtenerTodosLosFichajes(username, fichajes -> {
+            try {
+                FileOutputStream fos = (FileOutputStream) requireContext().getContentResolver().openOutputStream(uri);
+                OutputStreamWriter osw = new OutputStreamWriter(fos);
 
-            FileOutputStream fos = (FileOutputStream) requireContext().getContentResolver().openOutputStream(uri);
-            OutputStreamWriter osw = new OutputStreamWriter(fos);
+                osw.write("ID,Fecha,Hora Entrada,Hora Salida,Latitud,Longitud,Username\n");
 
-            // Cabecera del CSV
-            osw.write("ID,Fecha,Hora Entrada,Hora Salida,Latitud,Longitud,Username\n");
+                for (Fichaje fichaje : fichajes) {
+                    osw.write(String.format(Locale.getDefault(),
+                            "%d,%s,%s,%s,%f,%f,%s\n",
+                            fichaje.id,
+                            fichaje.fecha,
+                            fichaje.horaEntrada,
+                            fichaje.horaSalida != null ? fichaje.horaSalida : "",
+                            fichaje.latitud,
+                            fichaje.longitud,
+                            fichaje.username));
+                }
 
-            // Líneas del CSV
-            for (Fichaje fichaje : fichajes) {
-                osw.write(String.format(Locale.getDefault(),
-                        "%d,%s,%s,%s,%f,%f,%s\n",
-                        fichaje.id,
-                        fichaje.fecha,
-                        fichaje.horaEntrada,
-                        fichaje.horaSalida != null ? fichaje.horaSalida : "",
-                        fichaje.latitud,
-                        fichaje.longitud,
-                        fichaje.username));
+                osw.close();
+                fos.close();
+
+                Toast.makeText(requireContext(), R.string.export_success, Toast.LENGTH_SHORT).show();
+            } catch (IOException e) {
+                e.printStackTrace();
+                Toast.makeText(requireContext(), R.string.export_error, Toast.LENGTH_SHORT).show();
             }
-
-            osw.close();
-            fos.close();
-
-            Toast.makeText(requireContext(), R.string.export_success, Toast.LENGTH_SHORT).show();
-        } catch (IOException e) {
-            e.printStackTrace();
-            Toast.makeText(requireContext(), R.string.export_error, Toast.LENGTH_SHORT).show();
-        }
+        });
     }
 
     private void processImportFile(Uri uri) {
@@ -199,9 +200,7 @@ public class HistoryFragment extends Fragment implements FichajeDetailsDialog.On
 
             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
             String line;
-
-            // Saltar la cabecera al leer
-            reader.readLine();
+            reader.readLine(); // Skip header
 
             List<Fichaje> fichajesImportados = new ArrayList<>();
             String username = dbHelper.getCurrentUsername(requireContext());
@@ -210,30 +209,27 @@ public class HistoryFragment extends Fragment implements FichajeDetailsDialog.On
                 try {
                     String[] values = line.split(",");
                     if (values.length >= 6) {
-                        // Crea objetos fichaje por cada línea
                         Fichaje fichaje = new Fichaje(
-                                0, // La BD lo gestiona con autoincrement
-                                values[1], // fecha
-                                values[2], // horaEntrada
-                                values[3].isEmpty() ? null : values[3], // horaSalida
-                                Double.parseDouble(values[4]), // latitud
-                                Double.parseDouble(values[5]),  // longitud
-                                username // Se asigna siempre al usuario que lo solicita
+                                0,
+                                values[1],
+                                values[2],
+                                values[3].isEmpty() ? null : values[3],
+                                Double.parseDouble(values[4]),
+                                Double.parseDouble(values[5]),
+                                username
                         );
                         fichajesImportados.add(fichaje);
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
-                    // Errores
                 }
             }
 
             reader.close();
             inputStream.close();
 
-            // Guardar fichajes en la DB
             for (Fichaje fichaje : fichajesImportados) {
-                dbHelper.insertarFichaje(fichaje);
+                dbHelper.insertarFichaje(fichaje, success -> {});
             }
 
             actualizarLista();

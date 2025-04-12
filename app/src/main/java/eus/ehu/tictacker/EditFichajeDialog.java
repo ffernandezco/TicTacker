@@ -65,25 +65,24 @@ public class EditFichajeDialog extends DialogFragment {
         btnChangeSalida.setOnClickListener(v -> showTimePickerDialog(false));
 
         btnGuardar.setOnClickListener(v -> {
-            // Actualizar el fichaje
             fichaje.horaEntrada = tvEntrada.getText().toString();
             String salidaText = tvSalida.getText().toString();
             if (!salidaText.equals(context.getString(R.string.pendiente))) {
                 fichaje.horaSalida = salidaText;
             }
 
-            // Guardar datos en la DB (local)
-            updateFichajeInDb();
-
-            // Evento
-            FichajeEvents.notifyFichajeChanged();
-
-            // Si el listener está activo, actualizar
-            if (listener != null) {
-                listener.onFichajeUpdated();
-            }
-            dismiss();
-            Toast.makeText(context, context.getString(R.string.fichaje_updated), Toast.LENGTH_SHORT).show();
+            updateFichajeInDb(success -> {
+                if (success) {
+                    FichajeEvents.notifyFichajeChanged();
+                    if (listener != null) {
+                        listener.onFichajeUpdated();
+                    }
+                    dismiss();
+                    Toast.makeText(context, context.getString(R.string.fichaje_updated), Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(context, context.getString(R.string.fichaje_update_error), Toast.LENGTH_SHORT).show();
+                }
+            });
         });
 
         btnCancelar.setOnClickListener(v -> dismiss());
@@ -98,12 +97,10 @@ public class EditFichajeDialog extends DialogFragment {
             String timeStr = isEntrada ? fichaje.horaEntrada :
                     (fichaje.horaSalida != null ? fichaje.horaSalida : "12:00:00");
 
-            // Comprobar que el tiempo está bien
             Date time;
             try {
                 time = sdf.parse(timeStr);
             } catch (ParseException e) {
-                // Si no tiene segundos asignados
                 SimpleDateFormat sdfNoSeconds = new SimpleDateFormat("HH:mm", Locale.getDefault());
                 time = sdfNoSeconds.parse(timeStr);
             }
@@ -121,7 +118,6 @@ public class EditFichajeDialog extends DialogFragment {
         TimePickerDialog timePickerDialog = new TimePickerDialog(
                 requireContext(),
                 (view, hourOfDay, minuteOfDay) -> {
-                    // Añadir segundos para que sea compatible con el resto de la vista
                     String timeStr = String.format(Locale.getDefault(), "%02d:%02d:00", hourOfDay, minuteOfDay);
                     if (isEntrada) {
                         tvEntrada.setText(timeStr);
@@ -137,14 +133,9 @@ public class EditFichajeDialog extends DialogFragment {
         timePickerDialog.show();
     }
 
-    private void updateFichajeInDb() {
-        if (fichaje.horaSalida != null) {
-            // Se ha entrado y salido
-            databaseHelper.actualizarFichajeCompleto(fichaje);
-        } else {
-            // Solo se ha fichado
-            databaseHelper.actualizarHoraEntrada(fichaje);
-        }
+    private void updateFichajeInDb(DatabaseHelper.BooleanCallback callback) {
+        // Se puede actualizar el fichaje completo
+        databaseHelper.actualizarFichajeCompleto(fichaje, callback);
     }
 
     @Override
@@ -156,5 +147,11 @@ public class EditFichajeDialog extends DialogFragment {
             int height = ViewGroup.LayoutParams.WRAP_CONTENT;
             dialog.getWindow().setLayout(width, height);
         }
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        databaseHelper.close();
     }
 }

@@ -76,26 +76,23 @@ public class SettingsActivity extends AppCompatActivity {
 
         btnSave.setOnClickListener(v -> {
             String selectedLanguage = spinnerLanguage.getSelectedItemPosition() == 0 ? "es" : "en";
-
-            // Calcula horas semanales a trabajar en función de los parámetros de horas y días
             float weeklyHours = selectedHours + (selectedMinutes / 60.0f);
-
-            // Contador de los días seleccionados
             int workingDays = countSelectedDays();
 
             if (weeklyHours <= 0 || weeklyHours > 168 || workingDays <= 0 || workingDays > 7) {
-                Toast.makeText(this, getString(R.string.invalid_settings),
-                        Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, getString(R.string.invalid_settings), Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            // Almacenar preferencias
             saveLanguagePreference(selectedLanguage);
-            dbHelper.saveSettings(weeklyHours, workingDays);
-
-            // Reinicia la app si se cambia el idioma para que se use strings-en o el asociado
-            setAppLocale(selectedLanguage);
-            restartApp();
+            dbHelper.saveSettings(weeklyHours, workingDays, success -> {
+                if (success) {
+                    setAppLocale(selectedLanguage);
+                    restartApp();
+                } else {
+                    Toast.makeText(this, R.string.settings_save_error, Toast.LENGTH_SHORT).show();
+                }
+            });
         });
     }
 
@@ -207,24 +204,20 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void loadSavedSettings() {
-        // Cargar idioma guardado
         SharedPreferences prefs = getSharedPreferences("AppPrefs", MODE_PRIVATE);
         String lang = prefs.getString("language", "es");
         spinnerLanguage.setSelection(lang.equals("es") ? 0 : 1);
 
-        // Mostrar el resto de ajustes
-        float[] settings = dbHelper.getSettings();
+        dbHelper.getSettings(settings -> {
+            selectedHours = (int) settings[0];
+            selectedMinutes = Math.round((settings[0] - selectedHours) * 60 / MINUTE_INCREMENT) * MINUTE_INCREMENT;
 
-        // Divisor de horas a horas y minutos
-        selectedHours = (int) settings[0];
-
-        // Aplicar redondeo para tener minutos de 5 en 5
-        selectedMinutes = Math.round((settings[0] - selectedHours) * 60 / MINUTE_INCREMENT) * MINUTE_INCREMENT;
-
-        updateHoursDisplay();
-        updateMinutesDisplay();
-
-        setSelectedDays((int) settings[1]);
+            runOnUiThread(() -> {
+                updateHoursDisplay();
+                updateMinutesDisplay();
+                setSelectedDays((int) settings[1]);
+            });
+        });
     }
 
     private void saveLanguagePreference(String lang) {
@@ -250,20 +243,27 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void showDeleteConfirmationDialog() {
-        androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(this);
-        builder.setTitle(getString(R.string.confirm_delete_title))
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle(getString(R.string.confirm_delete_title))
                 .setMessage(getString(R.string.confirm_delete_message))
                 .setPositiveButton(getString(R.string.confirming), (dialog, which) -> {
-                    // Elimina todos los fichajes del usuario actual
                     String username = dbHelper.getCurrentUsername(this);
-                    dbHelper.deleteAllFichajes(username);
-                    Toast.makeText(this, getString(R.string.history_deleted), Toast.LENGTH_SHORT).show();
+                    dbHelper.deleteAllFichajes(username, success -> {
+                        if (success) {
+                            Toast.makeText(this, getString(R.string.history_deleted), Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(this, getString(R.string.history_delete_error), Toast.LENGTH_SHORT).show();
+                        }
+                    });
                 })
-                .setNegativeButton(getString(R.string.no), (dialog, which) -> {
-                    // Cancelar si el usuario no acepta
-                    dialog.dismiss();
-                })
+                .setNegativeButton(getString(R.string.no), (dialog, which) -> dialog.dismiss())
                 .setCancelable(true)
                 .show();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        dbHelper.close();
     }
 }

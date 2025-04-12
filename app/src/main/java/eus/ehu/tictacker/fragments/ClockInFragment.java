@@ -5,6 +5,7 @@ import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -89,7 +90,6 @@ public class ClockInFragment extends Fragment {
         FichajeEvents.setListener(new FichajeEvents.FichajeChangeListener() {
             @Override
             public void onFichajeChanged() {
-                // Recalcula el tiempo si se actualiza un fichaje
                 if (isAdded() && getContext() != null) {
                     timerHandler.removeCallbacks(timerRunnable);
                     actualizarEstadoUI();
@@ -116,10 +116,10 @@ public class ClockInFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        dbHelper.close();
         FichajeEvents.setListener(null);
     }
 
-    // Comprobar permisos de localización
     private void checkLocationPermissionAndRegister() {
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -131,7 +131,6 @@ public class ClockInFragment extends Fragment {
         }
     }
 
-    // Obtener localización para añadir al fichaje
     private void getCurrentLocationAndRegister() {
         if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -139,19 +138,16 @@ public class ClockInFragment extends Fragment {
         }
 
         fusedLocationClient.getLastLocation()
-                .addOnSuccessListener(requireActivity(), new OnSuccessListener<Location>() {
-                    @Override
-                    public void onSuccess(Location location) {
-                        double latitude = 0.0;
-                        double longitude = 0.0;
+                .addOnSuccessListener(requireActivity(), location -> {
+                    double latitude = 0.0;
+                    double longitude = 0.0;
 
-                        if (location != null) {
-                            latitude = location.getLatitude();
-                            longitude = location.getLongitude();
-                        }
-
-                        registrarFichaje(latitude, longitude);
+                    if (location != null) {
+                        latitude = location.getLatitude();
+                        longitude = location.getLongitude();
                     }
+
+                    registrarFichaje(latitude, longitude);
                 });
     }
 
@@ -161,143 +157,150 @@ public class ClockInFragment extends Fragment {
 
         String fechaActual = sdfFecha.format(new Date());
         String horaActual = sdfHora.format(new Date());
-
         String username = dbHelper.getCurrentUsername(requireContext());
 
-        Fichaje ultimoFichaje = dbHelper.obtenerUltimoFichajeDelDia(fechaActual, username);
+        dbHelper.obtenerUltimoFichajeDelDia(fechaActual, username, new DatabaseHelper.FichajeCallback() {
+            @Override
+            public void onFichajeReceived(Fichaje ultimoFichaje) {
+                if (ultimoFichaje == null || ultimoFichaje.horaSalida != null) {
+                    // Entrada
+                    Fichaje nuevoFichaje = new Fichaje(fechaActual, horaActual, null, latitude, longitude, username);
+                    dbHelper.insertarFichaje(nuevoFichaje, success -> {
+                        actualizarEstadoUI();
+                        notificationShownThisSession = false;
+                    });
+                } else {
+                    // Comprobar si el fichaje está completo
+                    dbHelper.obtenerFichajesDeHoy(username, new DatabaseHelper.FichajesCallback() {
+                        @Override
+                        public void onFichajesReceived(List<Fichaje> todaysFichajes) {
+                            dbHelper.getSettings(new DatabaseHelper.SettingsCallback() {
+                                @Override
+                                public void onSettingsReceived(float[] settings) {
+                                    float weeklyHours = settings[0];
+                                    int workingDays = (int) settings[1];
 
-        if (ultimoFichaje == null || ultimoFichaje.horaSalida != null) {
-            // Entrada
-            Fichaje nuevoFichaje = new Fichaje(fechaActual, horaActual, null, latitude, longitude, username);
-            dbHelper.insertarFichaje(nuevoFichaje);
-            actualizarEstadoUI();
-            notificationShownThisSession = false;
-        } else {
-            // Comprobar si el fichaje está completo
-            List<Fichaje> todaysFichajes = dbHelper.obtenerFichajesDeHoy(username);
-            float[] settings = dbHelper.getSettings();
-            float weeklyHours = settings[0];
-            int workingDays = (int) settings[1];
+                                    float dailyHours = WorkTimeCalculator.calculateDailyHours(weeklyHours, workingDays);
+                                    long[] timeWorked = WorkTimeCalculator.getTimeWorkedToday(todaysFichajes);
+                                    long[] timeRemaining = WorkTimeCalculator.getRemainingTime(timeWorked, dailyHours);
 
-            float dailyHours = WorkTimeCalculator.calculateDailyHours(weeklyHours, workingDays);
-            long[] timeWorked = WorkTimeCalculator.getTimeWorkedToday(todaysFichajes);
-            long[] timeRemaining = WorkTimeCalculator.getRemainingTime(timeWorked, dailyHours);
-
-            // Comprobar si quedan horas para finalizar la jornada
-            if (timeRemaining[2] == 0 && (timeRemaining[0] > 0 || timeRemaining[1] > 0)) {
-                showConfirmClockOutDialog(ultimoFichaje, horaActual, latitude, longitude);
-            } else {
-                // No mostrar dialog si se ha finalizado
-                completeClockOut(ultimoFichaje, horaActual, latitude, longitude);
+                                    if (timeRemaining[2] == 0 && (timeRemaining[0] > 0 || timeRemaining[1] > 0)) {
+                                        showConfirmClockOutDialog(ultimoFichaje, horaActual, latitude, longitude);
+                                    } else {
+                                        completeClockOut(ultimoFichaje, horaActual, latitude, longitude);
+                                    }
+                                }
+                            });
+                        }
+                    });
+                }
             }
-        }
+        });
     }
 
-    // Actualizaciones dinámicas
     private void actualizarEstadoUI() {
         String username = dbHelper.getCurrentUsername(requireContext());
-        List<Fichaje> todaysFichajes = dbHelper.obtenerFichajesDeHoy(username);
-        float[] settings = dbHelper.getSettings();
-        float weeklyHours = settings[0];
-        int workingDays = (int) settings[1];
+        dbHelper.obtenerFichajesDeHoy(username, new DatabaseHelper.FichajesCallback() {
+            @Override
+            public void onFichajesReceived(List<Fichaje> todaysFichajes) {
+                dbHelper.getSettings(new DatabaseHelper.SettingsCallback() {
+                    @Override
+                    public void onSettingsReceived(float[] settings) {
+                        float weeklyHours = settings[0];
+                        int workingDays = (int) settings[1];
 
-        float dailyHours = WorkTimeCalculator.calculateDailyHours(weeklyHours, workingDays);
-        long[] timeWorked = WorkTimeCalculator.getTimeWorkedToday(todaysFichajes);
-        long[] timeRemaining = WorkTimeCalculator.getRemainingTime(timeWorked, dailyHours);
+                        float dailyHours = WorkTimeCalculator.calculateDailyHours(weeklyHours, workingDays);
+                        long[] timeWorked = WorkTimeCalculator.getTimeWorkedToday(todaysFichajes);
+                        long[] timeRemaining = WorkTimeCalculator.getRemainingTime(timeWorked, dailyHours);
 
-        String timeWorkedStr = WorkTimeCalculator.formatTime(timeWorked[0], timeWorked[1]);
-        String timeRemainingStr = WorkTimeCalculator.formatTime(timeRemaining[0], timeRemaining[1]);
+                        String timeWorkedStr = WorkTimeCalculator.formatTime(timeWorked[0], timeWorked[1]);
+                        String timeRemainingStr = WorkTimeCalculator.formatTime(timeRemaining[0], timeRemaining[1]);
 
-        boolean isClockedIn = WorkTimeCalculator.isCurrentlyClockedIn(todaysFichajes);
+                        boolean isClockedIn = WorkTimeCalculator.isCurrentlyClockedIn(todaysFichajes);
 
-        if (isClockedIn) {
-            String horaFichaje = WorkTimeCalculator.getLastClockInTime(todaysFichajes);
-            tvEstadoFichaje.setText(getString(R.string.estado_fichado, horaFichaje));
-            btnFichar.setText(getString(R.string.fichar_salida));
-        } else {
-            tvEstadoFichaje.setText(getString(R.string.estado_no_fichado));
-            btnFichar.setText(getString(R.string.fichar_entrada));
-        }
+                        if (isClockedIn) {
+                            String horaFichaje = WorkTimeCalculator.getLastClockInTime(todaysFichajes);
+                            tvEstadoFichaje.setText(getString(R.string.estado_fichado, horaFichaje));
+                            btnFichar.setText(getString(R.string.fichar_salida));
+                        } else {
+                            tvEstadoFichaje.setText(getString(R.string.estado_no_fichado));
+                            btnFichar.setText(getString(R.string.fichar_entrada));
+                        }
 
-        tvTimeWorked.setText(getString(R.string.time_worked, timeWorkedStr));
+                        tvTimeWorked.setText(getString(R.string.time_worked, timeWorkedStr));
 
-        int color = timeRemaining[2] == 0 ?
-                ContextCompat.getColor(requireContext(), android.R.color.holo_green_dark) :
-                ContextCompat.getColor(requireContext(), android.R.color.holo_red_dark);
+                        int color = timeRemaining[2] == 0 ?
+                                ContextCompat.getColor(requireContext(), android.R.color.holo_green_dark) :
+                                ContextCompat.getColor(requireContext(), android.R.color.holo_red_dark);
 
-        tvTimeRemaining.setText(timeRemaining[2] == 0 ?
-                getString(R.string.time_remaining, timeRemainingStr) :
-                getString(R.string.overtime, timeRemainingStr));
-        tvTimeRemaining.setTextColor(color);
+                        tvTimeRemaining.setText(timeRemaining[2] == 0 ?
+                                getString(R.string.time_remaining, timeRemainingStr) :
+                                getString(R.string.overtime, timeRemainingStr));
+                        tvTimeRemaining.setTextColor(color);
+                    }
+                });
+            }
+        });
     }
 
-    // Añadir hora de salida
     private void completeClockOut(Fichaje fichaje, String horaSalida, double latitude, double longitude) {
         fichaje.horaSalida = horaSalida;
         fichaje.latitud = latitude;
         fichaje.longitud = longitude;
-        dbHelper.actualizarFichaje(fichaje);
-        actualizarEstadoUI();
-        notificationShownThisSession = false;
+        dbHelper.actualizarFichaje(fichaje, success -> {
+            actualizarEstadoUI();
+            notificationShownThisSession = false;
+        });
     }
 
-    // Mensaje para hora de salida anterior a la prevista
     private void showConfirmClockOutDialog(Fichaje fichaje, String horaSalida, double latitude, double longitude) {
-        androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(requireContext());
-        builder.setMessage(R.string.confirm_clock_out_message)
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setMessage(R.string.confirm_clock_out_message)
                 .setPositiveButton(R.string.yes, (dialog, id) -> {
                     completeClockOut(fichaje, horaSalida, latitude, longitude);
                 })
-                .setNegativeButton(R.string.no, (dialog, id) -> {
-                    dialog.dismiss();
-                });
-        builder.create().show();
+                .setNegativeButton(R.string.no, (dialog, id) -> dialog.dismiss())
+                .create()
+                .show();
     }
 
     private void checkWorkTimeCompleted() {
-        // Comprobar envíos de notificaciones
         long currentTime = System.currentTimeMillis();
         if (currentTime - lastNotificationCheckTime < 5000) {
             return;
         }
         lastNotificationCheckTime = currentTime;
 
-        // Permisos
-        if (!notificationHelper.areNotificationsEnabled()) {
-            return;
-        }
-
-        if (!notificationHelper.shouldSendNotification(requireContext())) {
-            return;
-        }
-
-        // Evitar notificaciones dobles
-        if (notificationShownThisSession) {
+        if (!notificationHelper.areNotificationsEnabled() ||
+                !notificationHelper.shouldSendNotification(requireContext()) ||
+                notificationShownThisSession) {
             return;
         }
 
         String username = dbHelper.getCurrentUsername(requireContext());
-        List<Fichaje> todaysFichajes = dbHelper.obtenerFichajesDeHoy(username);
-        float[] settings = dbHelper.getSettings();
-        float weeklyHours = settings[0];
-        int workingDays = (int) settings[1];
+        dbHelper.obtenerFichajesDeHoy(username, new DatabaseHelper.FichajesCallback() {
+            @Override
+            public void onFichajesReceived(List<Fichaje> todaysFichajes) {
+                dbHelper.getSettings(new DatabaseHelper.SettingsCallback() {
+                    @Override
+                    public void onSettingsReceived(float[] settings) {
+                        float weeklyHours = settings[0];
+                        int workingDays = (int) settings[1];
 
-        float dailyHours = WorkTimeCalculator.calculateDailyHours(weeklyHours, workingDays);
-        long[] timeWorked = WorkTimeCalculator.getTimeWorkedToday(todaysFichajes);
-        long[] timeRemaining = WorkTimeCalculator.getRemainingTime(timeWorked, dailyHours);
+                        float dailyHours = WorkTimeCalculator.calculateDailyHours(weeklyHours, workingDays);
+                        long[] timeWorked = WorkTimeCalculator.getTimeWorkedToday(todaysFichajes);
+                        long[] timeRemaining = WorkTimeCalculator.getRemainingTime(timeWorked, dailyHours);
 
-        boolean isClockedIn = WorkTimeCalculator.isCurrentlyClockedIn(todaysFichajes);
+                        boolean isClockedIn = WorkTimeCalculator.isCurrentlyClockedIn(todaysFichajes);
 
-        Log.d(TAG, "Tiempo trabajado: " + timeWorked[0] + ":" + timeWorked[1]);
-        Log.d(TAG, "Tiempo restante: " + timeRemaining[2] + " (-1)");
-        Log.d(TAG, "Estado: " + isClockedIn);
-
-        // Envío de notificaciones
-        if (isClockedIn && (timeRemaining[2] == 1 || (timeRemaining[0] == 0 && timeRemaining[1] <= 1))) {
-            Log.d(TAG, "Sending work complete notification from fragment");
-            notificationHelper.sendWorkCompleteNotification();
-            notificationShownThisSession = true;
-        }
+                        if (isClockedIn && (timeRemaining[2] == 1 || (timeRemaining[0] == 0 && timeRemaining[1] <= 1))) {
+                            notificationHelper.sendWorkCompleteNotification();
+                            notificationShownThisSession = true;
+                        }
+                    }
+                });
+            }
+        });
     }
 
     @Override

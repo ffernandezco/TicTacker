@@ -19,6 +19,7 @@ public class FichajeDetailsDialog extends DialogFragment implements EditFichajeD
 
     private Fichaje fichaje;
     private OnFichajeUpdatedListener listener;
+    private DatabaseHelper databaseHelper;
 
     public interface OnFichajeUpdatedListener {
         void onFichajeUpdated();
@@ -29,7 +30,6 @@ public class FichajeDetailsDialog extends DialogFragment implements EditFichajeD
         this.listener = listener;
     }
 
-    // Constructor - Necesario para compatibilidad
     public FichajeDetailsDialog(Fichaje fichaje) {
         this.fichaje = fichaje;
     }
@@ -39,6 +39,7 @@ public class FichajeDetailsDialog extends DialogFragment implements EditFichajeD
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.dialog_fichaje_details, container, false);
+        databaseHelper = new DatabaseHelper(requireContext());
 
         TextView tvFecha = view.findViewById(R.id.tvDetailFecha);
         TextView tvEntrada = view.findViewById(R.id.tvDetailEntrada);
@@ -50,19 +51,7 @@ public class FichajeDetailsDialog extends DialogFragment implements EditFichajeD
 
         Context context = view.getContext();
 
-        tvFecha.setText(context.getString(R.string.fecha, fichaje.fecha));
-        tvEntrada.setText(context.getString(R.string.entrada, fichaje.horaEntrada));
-
-        String salida = fichaje.horaSalida != null ? fichaje.horaSalida : context.getString(R.string.pendiente);
-        tvSalida.setText(context.getString(R.string.salida, salida));
-
-        if (fichaje.latitud == 0.0 && fichaje.longitud == 0.0) {
-            tvLocation.setText(context.getString(R.string.ubicacion_no_disponible));
-            btnVerMapa.setEnabled(false);
-        } else {
-            tvLocation.setText(context.getString(R.string.ubicacion, fichaje.latitud, fichaje.longitud));
-            btnVerMapa.setEnabled(true);
-        }
+        updateUI(view);
 
         btnVerMapa.setOnClickListener(v -> {
             if (fichaje.latitud != 0.0 || fichaje.longitud != 0.0) {
@@ -83,26 +72,46 @@ public class FichajeDetailsDialog extends DialogFragment implements EditFichajeD
         return view;
     }
 
+    private void updateUI(View view) {
+        Context context = view.getContext();
+        TextView tvFecha = view.findViewById(R.id.tvDetailFecha);
+        TextView tvEntrada = view.findViewById(R.id.tvDetailEntrada);
+        TextView tvSalida = view.findViewById(R.id.tvDetailSalida);
+        TextView tvLocation = view.findViewById(R.id.tvDetailLocation);
+        Button btnVerMapa = view.findViewById(R.id.btnVerMapa);
+
+        tvFecha.setText(context.getString(R.string.fecha, fichaje.fecha));
+        tvEntrada.setText(context.getString(R.string.entrada, fichaje.horaEntrada));
+
+        String salida = fichaje.horaSalida != null ? fichaje.horaSalida : context.getString(R.string.pendiente);
+        tvSalida.setText(context.getString(R.string.salida, salida));
+
+        if (fichaje.latitud == 0.0 && fichaje.longitud == 0.0) {
+            tvLocation.setText(context.getString(R.string.ubicacion_no_disponible));
+            btnVerMapa.setEnabled(false);
+        } else {
+            tvLocation.setText(context.getString(R.string.ubicacion, fichaje.latitud, fichaje.longitud));
+            btnVerMapa.setEnabled(true);
+        }
+    }
+
     @Override
     public void onFichajeUpdated() {
-        // Actualiza dinámicamente los detalles
-        if (getView() != null) {
-            Context context = getView().getContext();
-            TextView tvEntrada = getView().findViewById(R.id.tvDetailEntrada);
-            TextView tvSalida = getView().findViewById(R.id.tvDetailSalida);
+        // Refresh the data from database
+        databaseHelper.obtenerUltimoFichajeDelDia(fichaje.fecha, fichaje.username, updatedFichaje -> {
+            if (updatedFichaje != null && updatedFichaje.id == fichaje.id) {
+                fichaje = updatedFichaje;
+                if (getView() != null) {
+                    updateUI(getView());
+                }
+            }
 
-            tvEntrada.setText(context.getString(R.string.entrada, fichaje.horaEntrada));
-            String salida = fichaje.horaSalida != null ? fichaje.horaSalida : context.getString(R.string.pendiente);
-            tvSalida.setText(context.getString(R.string.salida, salida));
-        }
+            FichajeEvents.notifyFichajeChanged();
 
-        // Vuelve a estimar tiempos
-        FichajeEvents.notifyFichajeChanged();
-
-        // Avisa al listener si está activo
-        if (listener != null) {
-            listener.onFichajeUpdated();
-        }
+            if (listener != null) {
+                listener.onFichajeUpdated();
+            }
+        });
     }
 
     @Override
@@ -114,5 +123,11 @@ public class FichajeDetailsDialog extends DialogFragment implements EditFichajeD
             int height = ViewGroup.LayoutParams.WRAP_CONTENT;
             dialog.getWindow().setLayout(width, height);
         }
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        databaseHelper.close();
     }
 }
