@@ -10,11 +10,15 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 public class SignupActivity extends AppCompatActivity {
     private EditText editTextUsername, editTextPassword, editTextConfirmPassword;
     private Button buttonSignup;
     private TextView textViewLoginLink;
     private DatabaseHelper dbHelper;
+    private ExecutorService executorService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -22,6 +26,7 @@ public class SignupActivity extends AppCompatActivity {
         setContentView(R.layout.activity_signup);
 
         dbHelper = new DatabaseHelper(this);
+        executorService = Executors.newSingleThreadExecutor();
 
         editTextUsername = findViewById(R.id.editTextUsername);
         editTextPassword = findViewById(R.id.editTextPassword);
@@ -35,22 +40,38 @@ public class SignupActivity extends AppCompatActivity {
             String confirmPassword = editTextConfirmPassword.getText().toString().trim();
 
             if (validateInputs(username, password, confirmPassword)) {
-                if (dbHelper.addUser(username, password)) {
-                    Toast.makeText(SignupActivity.this, getString(R.string.registro_exitoso), Toast.LENGTH_SHORT).show();
-                    // Redirigir al login
-                    startActivity(new Intent(SignupActivity.this, LoginActivity.class));
-                    finish();
-                } else {
-                    Toast.makeText(SignupActivity.this, getString(R.string.el_nombre_de_usuario_ya_existe), Toast.LENGTH_SHORT).show();
-                }
+                buttonSignup.setEnabled(false);
+
+                executorService.execute(() -> {
+                    final boolean success = dbHelper.addUser(username, password);
+                    runOnUiThread(() -> {
+                        buttonSignup.setEnabled(true);
+                        if (success) {
+                            Toast.makeText(SignupActivity.this, getString(R.string.registro_exitoso), Toast.LENGTH_SHORT).show();
+                            // Redirigir a login
+                            startActivity(new Intent(SignupActivity.this, LoginActivity.class));
+                            finish();
+                        } else {
+                            Toast.makeText(SignupActivity.this, getString(R.string.el_nombre_de_usuario_ya_existe), Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                });
             }
         });
 
-        // Link para volver a login
+        // Link to go back to login
         textViewLoginLink.setOnClickListener(v -> {
             startActivity(new Intent(SignupActivity.this, LoginActivity.class));
             finish();
         });
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (executorService != null) {
+            executorService.shutdown();
+        }
     }
 
     private boolean validateInputs(String username, String password, String confirmPassword) {
