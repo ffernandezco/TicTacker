@@ -12,6 +12,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -164,13 +165,33 @@ public class ClockInFragment extends Fragment {
             public void onFichajeReceived(Fichaje ultimoFichaje) {
                 if (ultimoFichaje == null || ultimoFichaje.horaSalida != null) {
                     // Entrada
-                    Fichaje nuevoFichaje = new Fichaje(fechaActual, horaActual, null, latitude, longitude, username);
+                    Fichaje nuevoFichaje = new Fichaje();
+                    nuevoFichaje.fecha = fechaActual;
+                    nuevoFichaje.horaEntrada = horaActual;
+                    nuevoFichaje.horaSalida = null;
+                    nuevoFichaje.latitud = latitude;
+                    nuevoFichaje.longitud = longitude;
+                    nuevoFichaje.username = username;
+
                     dbHelper.insertarFichaje(nuevoFichaje, success -> {
-                        actualizarEstadoUI();
-                        notificationShownThisSession = false;
+                        if (success) {
+                            getActivity().runOnUiThread(() -> {
+                                FichajeEvents.notifyFichajeChanged();
+                                actualizarEstadoUI();
+                                Toast.makeText(requireContext(),
+                                        "Entrada registrada: " + horaActual,
+                                        Toast.LENGTH_SHORT).show();
+                            });
+                        } else {
+                            getActivity().runOnUiThread(() -> {
+                                Toast.makeText(requireContext(),
+                                        "Error al registrar la entrada",
+                                        Toast.LENGTH_SHORT).show();
+                            });
+                        }
                     });
                 } else {
-                    // Comprobar si el fichaje está completo
+                    // Salida
                     dbHelper.obtenerFichajesDeHoy(username, new DatabaseHelper.FichajesCallback() {
                         @Override
                         public void onFichajesReceived(List<Fichaje> todaysFichajes) {
@@ -216,27 +237,39 @@ public class ClockInFragment extends Fragment {
                         String timeWorkedStr = WorkTimeCalculator.formatTime(timeWorked[0], timeWorked[1]);
                         String timeRemainingStr = WorkTimeCalculator.formatTime(timeRemaining[0], timeRemaining[1]);
 
-                        boolean isClockedIn = WorkTimeCalculator.isCurrentlyClockedIn(todaysFichajes);
+                        // Declarar como final las variables que se usarán en el lambda
+                        final boolean[] isClockedIn = {false};
+                        final String[] lastClockInTime = {""};
 
-                        if (isClockedIn) {
-                            String horaFichaje = WorkTimeCalculator.getLastClockInTime(todaysFichajes);
-                            tvEstadoFichaje.setText(getString(R.string.estado_fichado, horaFichaje));
-                            btnFichar.setText(getString(R.string.fichar_salida));
-                        } else {
-                            tvEstadoFichaje.setText(getString(R.string.estado_no_fichado));
-                            btnFichar.setText(getString(R.string.fichar_entrada));
+                        // Buscar el fichaje activo
+                        for (Fichaje fichaje : todaysFichajes) {
+                            if (fichaje.horaEntrada != null && (fichaje.horaSalida == null || fichaje.horaSalida.isEmpty())) {
+                                isClockedIn[0] = true;
+                                lastClockInTime[0] = fichaje.horaEntrada != null ? fichaje.horaEntrada : "";
+                                break;
+                            }
                         }
 
-                        tvTimeWorked.setText(getString(R.string.time_worked, timeWorkedStr));
+                        requireActivity().runOnUiThread(() -> {
+                            if (isClockedIn[0]) {
+                                tvEstadoFichaje.setText(getString(R.string.estado_fichado, lastClockInTime[0]));
+                                btnFichar.setText(getString(R.string.fichar_salida));
+                            } else {
+                                tvEstadoFichaje.setText(getString(R.string.estado_no_fichado));
+                                btnFichar.setText(getString(R.string.fichar_entrada));
+                            }
 
-                        int color = timeRemaining[2] == 0 ?
-                                ContextCompat.getColor(requireContext(), android.R.color.holo_green_dark) :
-                                ContextCompat.getColor(requireContext(), android.R.color.holo_red_dark);
+                            tvTimeWorked.setText(getString(R.string.time_worked, timeWorkedStr));
 
-                        tvTimeRemaining.setText(timeRemaining[2] == 0 ?
-                                getString(R.string.time_remaining, timeRemainingStr) :
-                                getString(R.string.overtime, timeRemainingStr));
-                        tvTimeRemaining.setTextColor(color);
+                            int color = timeRemaining[2] == 0 ?
+                                    ContextCompat.getColor(requireContext(), android.R.color.holo_green_dark) :
+                                    ContextCompat.getColor(requireContext(), android.R.color.holo_red_dark);
+
+                            tvTimeRemaining.setText(timeRemaining[2] == 0 ?
+                                    getString(R.string.time_remaining, timeRemainingStr) :
+                                    getString(R.string.overtime, timeRemainingStr));
+                            tvTimeRemaining.setTextColor(color);
+                        });
                     }
                 });
             }
@@ -247,9 +280,23 @@ public class ClockInFragment extends Fragment {
         fichaje.horaSalida = horaSalida;
         fichaje.latitud = latitude;
         fichaje.longitud = longitude;
+
         dbHelper.actualizarFichaje(fichaje, success -> {
-            actualizarEstadoUI();
-            notificationShownThisSession = false;
+            if (success) {
+                getActivity().runOnUiThread(() -> {
+                    FichajeEvents.notifyFichajeChanged();
+                    actualizarEstadoUI();
+                    Toast.makeText(requireContext(),
+                            "Salida registrada: " + horaSalida,
+                            Toast.LENGTH_SHORT).show();
+                });
+            } else {
+                getActivity().runOnUiThread(() -> {
+                    Toast.makeText(requireContext(),
+                            "Error al registrar la salida",
+                            Toast.LENGTH_SHORT).show();
+                });
+            }
         });
     }
 

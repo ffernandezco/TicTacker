@@ -5,7 +5,7 @@ header('Content-Type: application/json');
 
 $data = json_decode(file_get_contents('php://input'), true);
 $action = $data['action'];
-$username = $data['username'];
+$username = isset($data['username']) ? $data['username'] : '';
 
 $response = ["success" => false, "data" => []];
 
@@ -13,19 +13,36 @@ switch ($action) {
     case 'insert':
         $query = "INSERT INTO fichajes (fecha, hora_entrada, latitud, longitud, username) VALUES (?, ?, ?, ?, ?)";
         $stmt = $con->prepare($query);
-        $stmt->bind_param("ssdds", $data['fecha'], $data['hora_entrada'], $data['latitud'], $data['longitud'], $username);
+        $stmt->bind_param("ssdds",
+            $data['fecha'],
+            $data['hora_entrada'],
+            $data['latitud'],
+            $data['longitud'],
+            $username);
         $response["success"] = $stmt->execute();
+        if ($response["success"]) {
+            $response["data"] = ["id" => $stmt->insert_id];
+        }
         break;
 
     case 'update':
-        $query = "UPDATE fichajes SET hora_salida = ?, latitud = ?, longitud = ? WHERE id = ?";
+        $query = "UPDATE fichajes SET hora_salida = ?, latitud = ?, longitud = ? WHERE id = ? AND username = ?";
         $stmt = $con->prepare($query);
-        $stmt->bind_param("sddi", $data['hora_salida'], $data['latitud'], $data['longitud'], $data['id']);
+        $horaSalida = !empty($data['hora_salida']) ? $data['hora_salida'] : null;
+        $stmt->bind_param("sddis",
+            $horaSalida,
+            $data['latitud'],
+            $data['longitud'],
+            $data['id'],
+            $username);
         $response["success"] = $stmt->execute();
         break;
 
     case 'get_all':
-        $query = "SELECT * FROM fichajes WHERE username = ? ORDER BY fecha DESC, hora_entrada DESC";
+        $query = "SELECT id, fecha, hora_entrada, hora_salida, latitud, longitud, username
+                  FROM fichajes
+                  WHERE username = ?
+                  ORDER BY fecha DESC, hora_entrada DESC";
         $stmt = $con->prepare($query);
         $stmt->bind_param("s", $username);
         $stmt->execute();
@@ -34,13 +51,13 @@ switch ($action) {
         $fichajes = [];
         while ($row = $result->fetch_assoc()) {
             $fichajes[] = [
-                "Id" => $row['id'],
-                "Fecha" => $row['fecha'],
-                "HoraEntrada" => $row['hora_entrada'],
-                "HoraSalida" => $row['hora_salida'],
-                "Latitud" => $row['latitud'],
-                "Longitud" => $row['longitud'],
-                "Username" => $row['username']
+                "id" => $row['id'],
+                "fecha" => $row['fecha'],
+                "hora_entrada" => $row['hora_entrada'],
+                "hora_salida" => $row['hora_salida'],
+                "latitud" => $row['latitud'],
+                "longitud" => $row['longitud'],
+                "username" => $row['username']
             ];
         }
         $response["data"] = $fichajes;
@@ -48,7 +65,10 @@ switch ($action) {
         break;
 
     case 'get_today':
-        $query = "SELECT * FROM fichajes WHERE fecha = ? AND username = ? ORDER BY hora_entrada ASC";
+        $query = "SELECT id, fecha, hora_entrada, hora_salida, latitud, longitud, username
+                  FROM fichajes
+                  WHERE fecha = ? AND username = ?
+                  ORDER BY hora_entrada ASC";
         $stmt = $con->prepare($query);
         $stmt->bind_param("ss", $data['fecha'], $username);
         $stmt->execute();
@@ -57,13 +77,13 @@ switch ($action) {
         $fichajes = [];
         while ($row = $result->fetch_assoc()) {
             $fichajes[] = [
-                "Id" => $row['id'],
-                "Fecha" => $row['fecha'],
-                "HoraEntrada" => $row['hora_entrada'],
-                "HoraSalida" => $row['hora_salida'],
-                "Latitud" => $row['latitud'],
-                "Longitud" => $row['longitud'],
-                "Username" => $row['username']
+                "id" => $row['id'],
+                "fecha" => $row['fecha'],
+                "hora_entrada" => $row['hora_entrada'],
+                "hora_salida" => $row['hora_salida'],
+                "latitud" => $row['latitud'],
+                "longitud" => $row['longitud'],
+                "username" => $row['username']
             ];
         }
         $response["data"] = $fichajes;
@@ -71,7 +91,10 @@ switch ($action) {
         break;
 
     case 'get_last':
-        $query = "SELECT * FROM fichajes WHERE fecha = ? AND username = ? ORDER BY hora_entrada DESC LIMIT 1";
+        $query = "SELECT id, fecha, hora_entrada, hora_salida, latitud, longitud, username
+                  FROM fichajes
+                  WHERE fecha = ? AND username = ?
+                  ORDER BY hora_entrada DESC LIMIT 1";
         $stmt = $con->prepare($query);
         $stmt->bind_param("ss", $data['fecha'], $username);
         $stmt->execute();
@@ -80,13 +103,13 @@ switch ($action) {
         if ($result->num_rows > 0) {
             $row = $result->fetch_assoc();
             $response["data"] = [
-                "Id" => $row['id'],
-                "Fecha" => $row['fecha'],
-                "HoraEntrada" => $row['hora_entrada'],
-                "HoraSalida" => $row['hora_salida'],
-                "Latitud" => $row['latitud'],
-                "Longitud" => $row['longitud'],
-                "Username" => $row['username']
+                "id" => $row['id'],
+                "fecha" => $row['fecha'],
+                "hora_entrada" => $row['hora_entrada'],
+                "hora_salida" => $row['hora_salida'],
+                "latitud" => $row['latitud'],
+                "longitud" => $row['longitud'],
+                "username" => $row['username']
             ];
             $response["success"] = true;
         }

@@ -22,4 +22,8 @@ public class Fichaje {
     public Fichaje(String fecha, String horaEntrada, String horaSalida, double latitud, double longitud, String username) {
         this(-1, fecha, horaEntrada, horaSalida, latitud, longitud, username);
     }
+
+    public Fichaje() {
+
+    }
 }

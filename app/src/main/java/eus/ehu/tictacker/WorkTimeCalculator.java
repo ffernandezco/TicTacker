@@ -118,7 +118,9 @@ public class WorkTimeCalculator {
 
     // Auxiliar para tiempos sin segundos
     public static String ensureTimeFormat(String timeStr) {
-        if (timeStr == null) return null;
+        if (timeStr == null || timeStr.isEmpty()) {
+            return "00:00:00";
+        }
 
         // Añade 00 a los segundos
         if (timeStr.matches("\\d{2}:\\d{2}")) {

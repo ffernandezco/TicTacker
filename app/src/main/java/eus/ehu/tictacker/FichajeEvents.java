@@ -1,11 +1,12 @@
 package eus.ehu.tictacker;
 
 public class FichajeEvents {
+
+    private static FichajeChangeListener listener;
+
     public interface FichajeChangeListener {
         void onFichajeChanged();
     }
-
-    private static FichajeChangeListener listener;
 
     public static void setListener(FichajeChangeListener l) {
         listener = l;
