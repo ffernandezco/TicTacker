@@ -134,7 +134,15 @@ public class EditFichajeDialog extends DialogFragment {
     }
 
     private void updateFichajeInDb(DatabaseHelper.BooleanCallback callback) {
-        // Se puede actualizar el fichaje completo
+        // Verificar si la hora de salida es "Pendiente" y establecerla como null
+        String salidaText = tvSalida.getText().toString();
+        if (salidaText.equals(getString(R.string.pendiente))) {
+            fichaje.horaSalida = null;
+        } else {
+            fichaje.horaSalida = salidaText;
+        }
+
+        // Actualizar ambos campos (entrada y salida)
         databaseHelper.actualizarFichajeCompleto(fichaje, callback);
     }
 

@@ -89,9 +89,26 @@ public class DatabaseHelper {
             try {
                 JsonObject jsonResponse = ApiClient.getInstance().post("fichajes.php", data);
                 if (jsonResponse != null && jsonResponse.has("success") && jsonResponse.get("success").getAsBoolean()) {
-                    Type listType = new TypeToken<ArrayList<Fichaje>>(){}.getType();
-                    List<Fichaje> result = jsonResponse.has("data") ?
-                            gson.fromJson(jsonResponse.get("data"), listType) : new ArrayList<>();
+                    List<Fichaje> result = new ArrayList<>();
+
+                    if (jsonResponse.has("data")) {
+                        for (JsonElement element : jsonResponse.getAsJsonArray("data")) {
+                            JsonObject obj = element.getAsJsonObject();
+                            Fichaje fichaje = new Fichaje();
+                            fichaje.id = obj.has("id") ? obj.get("id").getAsInt() : 0;
+                            fichaje.fecha = obj.has("fecha") ? obj.get("fecha").getAsString() : "";
+                            fichaje.horaEntrada = obj.has("hora_entrada") ?
+                                    (obj.get("hora_entrada").isJsonNull() ? null : obj.get("hora_entrada").getAsString()) : null;
+                            fichaje.horaSalida = obj.has("hora_salida") ?
+                                    (obj.get("hora_salida").isJsonNull() ? null : obj.get("hora_salida").getAsString()) : null;
+                            fichaje.latitud = obj.has("latitud") ? obj.get("latitud").getAsDouble() : 0.0;
+                            fichaje.longitud = obj.has("longitud") ? obj.get("longitud").getAsDouble() : 0.0;
+                            fichaje.username = username;
+
+                            result.add(fichaje);
+                        }
+                    }
+
                     new Handler(Looper.getMainLooper()).post(() -> callback.onFichajesReceived(result));
                     return;
                 }
@@ -265,17 +282,20 @@ public class DatabaseHelper {
     public void actualizarFichajeCompleto(Fichaje fichaje, BooleanCallback callback) {
         executorService.execute(() -> {
             Map<String, Object> data = new HashMap<>();
-            data.put("action", "update");
+            data.put("action", "update_complete");
             data.put("id", fichaje.id);
             data.put("hora_entrada", fichaje.horaEntrada);
-            data.put("hora_salida", fichaje.horaSalida);
+            data.put("hora_salida", fichaje.horaSalida != null ? fichaje.horaSalida : "");
+            data.put("latitud", fichaje.latitud);
+            data.put("longitud", fichaje.longitud);
+            data.put("username", fichaje.username);
 
             try {
                 JsonObject response = ApiClient.getInstance().post("fichajes.php", data);
                 boolean success = response.get("success").getAsBoolean();
                 new Handler(Looper.getMainLooper()).post(() -> callback.onResult(success));
             } catch (IOException e) {
-                Log.e("DatabaseHelper", "Error actualizando el fichaje", e);
+                Log.e("DatabaseHelper", "Error actualizando el fichaje completo", e);
                 new Handler(Looper.getMainLooper()).post(() -> callback.onResult(false));
             }
         });

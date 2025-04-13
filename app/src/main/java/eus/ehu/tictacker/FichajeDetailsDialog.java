@@ -97,7 +97,23 @@ public class FichajeDetailsDialog extends DialogFragment implements EditFichajeD
 
     @Override
     public void onFichajeUpdated() {
-        // Refresh the data from database
+        // Actualizar la vista con los nuevos datos
+        if (getView() != null) {
+            updateUI(getView());
+        }
+
+        // Notificar al listener (HistoryFragment) para que actualice su lista
+        if (listener != null) {
+            listener.onFichajeUpdated();
+        }
+
+        // Notificar a cualquier otro observador del cambio
+        FichajeEvents.notifyFichajeChanged();
+    }
+
+    /*
+    @Override
+    public void onFichajeUpdated() {
         databaseHelper.obtenerUltimoFichajeDelDia(fichaje.fecha, fichaje.username, updatedFichaje -> {
             if (updatedFichaje != null && updatedFichaje.id == fichaje.id) {
                 fichaje = updatedFichaje;
@@ -113,6 +129,8 @@ public class FichajeDetailsDialog extends DialogFragment implements EditFichajeD
             }
         });
     }
+    /*
+     */
 
     @Override
     public void onStart() {

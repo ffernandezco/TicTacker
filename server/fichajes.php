@@ -121,6 +121,20 @@ switch ($action) {
         $stmt->bind_param("s", $username);
         $response["success"] = $stmt->execute();
         break;
+
+    case 'update_complete':
+        $query = "UPDATE fichajes SET hora_entrada = ?, hora_salida = ?, latitud = ?, longitud = ? WHERE id = ? AND username = ?";
+        $stmt = $con->prepare($query);
+        $horaSalida = !empty($data['hora_salida']) ? $data['hora_salida'] : null;
+        $stmt->bind_param("ssddis",
+            $data['hora_entrada'],
+            $horaSalida,
+            $data['latitud'],
+            $data['longitud'],
+            $data['id'],
+            $username);
+        $response["success"] = $stmt->execute();
+        break;
 }
 
 echo json_encode($response);

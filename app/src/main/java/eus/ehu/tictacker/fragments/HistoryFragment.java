@@ -135,6 +135,7 @@ public class HistoryFragment extends Fragment implements FichajeDetailsDialog.On
 
     @Override
     public void onFichajeUpdated() {
+        // Actualizar lista cuando se modifica un fichaje
         actualizarLista();
     }
 

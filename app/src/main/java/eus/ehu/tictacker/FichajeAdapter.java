@@ -43,12 +43,15 @@ public class FichajeAdapter extends RecyclerView.Adapter<FichajeAdapter.FichajeV
         Context context = holder.itemView.getContext();
 
         holder.tvFecha.setText(context.getString(R.string.fecha, fichaje.fecha));
-        holder.tvHoraEntrada.setText(context.getString(R.string.entrada, fichaje.horaEntrada));
 
+        // Mostrar "No registrada" si la hora de entrada es null
+        String horaEntrada = fichaje.horaEntrada != null ? fichaje.horaEntrada : context.getString(R.string.no_registrada);
+        holder.tvHoraEntrada.setText(context.getString(R.string.entrada, horaEntrada));
+
+        // Mostrar "Pendiente" si la hora de salida es null
         String horaSalida = fichaje.horaSalida != null ? fichaje.horaSalida : context.getString(R.string.pendiente);
         holder.tvHoraSalida.setText(context.getString(R.string.salida, horaSalida));
 
-        // Listener
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) {
                 listener.onFichajeClick(fichaje);
