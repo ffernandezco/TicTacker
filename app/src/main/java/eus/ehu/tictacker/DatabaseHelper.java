@@ -62,10 +62,11 @@ public class DatabaseHelper {
     public void insertarFichaje(Fichaje fichaje, BooleanCallback callback) {
         executorService.execute(() -> {
             Map<String, Object> data = new HashMap<>();
-            data.put("action", "insert");
+            data.put("action", "insert_complete");
             data.put("username", fichaje.username);
             data.put("fecha", fichaje.fecha);
             data.put("hora_entrada", fichaje.horaEntrada);
+            data.put("hora_salida", fichaje.horaSalida != null ? fichaje.horaSalida : "");
             data.put("latitud", fichaje.latitud);
             data.put("longitud", fichaje.longitud);
 

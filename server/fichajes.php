@@ -135,6 +135,23 @@ switch ($action) {
             $username);
         $response["success"] = $stmt->execute();
         break;
+
+    case 'insert_complete':
+        $query = "INSERT INTO fichajes (fecha, hora_entrada, hora_salida, latitud, longitud, username) VALUES (?, ?, ?, ?, ?, ?)";
+        $stmt = $con->prepare($query);
+        $horaSalida = !empty($data['hora_salida']) ? $data['hora_salida'] : null;
+        $stmt->bind_param("sssdds",
+            $data['fecha'],
+            $data['hora_entrada'],
+            $horaSalida,
+            $data['latitud'],
+            $data['longitud'],
+            $username);
+        $response["success"] = $stmt->execute();
+        if ($response["success"]) {
+            $response["data"] = ["id" => $stmt->insert_id];
+        }
+        break;
 }
 
 echo json_encode($response);

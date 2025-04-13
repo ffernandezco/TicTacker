@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -169,12 +170,12 @@ public class HistoryFragment extends Fragment implements FichajeDetailsDialog.On
                 osw.write("ID,Fecha,Hora Entrada,Hora Salida,Latitud,Longitud,Username\n");
 
                 for (Fichaje fichaje : fichajes) {
-                    osw.write(String.format(Locale.getDefault(),
+                    osw.write(String.format(Locale.US,  // Usar Locale.US para puntos decimales
                             "%d,%s,%s,%s,%f,%f,%s\n",
                             fichaje.id,
                             fichaje.fecha,
-                            fichaje.horaEntrada,
-                            fichaje.horaSalida != null ? fichaje.horaSalida : "",
+                            fichaje.horaEntrada != null ? fichaje.horaEntrada : "",
+                            fichaje.horaSalida != null ? fichaje.horaSalida : "null",  // Usar null para valores nulos
                             fichaje.latitud,
                             fichaje.longitud,
                             fichaje.username));
@@ -201,43 +202,58 @@ public class HistoryFragment extends Fragment implements FichajeDetailsDialog.On
 
             BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
             String line;
-            reader.readLine(); // Skip header
+            reader.readLine(); // Saltar cabecera
 
             List<Fichaje> fichajesImportados = new ArrayList<>();
             String username = dbHelper.getCurrentUsername(requireContext());
 
             while ((line = reader.readLine()) != null) {
                 try {
-                    String[] values = line.split(",");
-                    if (values.length >= 6) {
+                    // Usar expresión regular para dividir correctamente los campos
+                    String[] values = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)");
+
+                    if (values.length >= 7) {
+                        // Corregir formato de números decimales (reemplazar comas por puntos)
+                        String latStr = values[4].replace(",", ".");
+                        String lonStr = values[5].replace(",", ".");
+
+                        String horaSalida = values[3].trim().equalsIgnoreCase("null") ? null : values[3];
+
                         Fichaje fichaje = new Fichaje(
-                                0,
+                                Integer.parseInt(values[0]),
                                 values[1],
                                 values[2],
-                                values[3].isEmpty() ? null : values[3],
-                                Double.parseDouble(values[4]),
-                                Double.parseDouble(values[5]),
-                                username
+                                horaSalida,
+                                Double.parseDouble(latStr),
+                                Double.parseDouble(lonStr),
+                                values[6]
                         );
                         fichajesImportados.add(fichaje);
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
+                    Log.e("ImportError", "Error procesando línea: " + line, e);
                 }
             }
 
             reader.close();
             inputStream.close();
 
+            // Insertar los fichajes uno por uno para manejar mejor los errores
+            int[] contador = {0};
             for (Fichaje fichaje : fichajesImportados) {
-                dbHelper.insertarFichaje(fichaje, success -> {});
+                dbHelper.insertarFichaje(fichaje, success -> {
+                    contador[0]++;
+                    if (contador[0] == fichajesImportados.size()) {
+                        requireActivity().runOnUiThread(() -> {
+                            actualizarLista();
+                            Toast.makeText(requireContext(),
+                                    getString(R.string.import_success) + " (" + fichajesImportados.size() + ")",
+                                    Toast.LENGTH_SHORT).show();
+                        });
+                    }
+                });
             }
-
-            actualizarLista();
-
-            Toast.makeText(requireContext(),
-                    getString(R.string.import_success) + " (" + fichajesImportados.size() + ")",
-                    Toast.LENGTH_SHORT).show();
 
         } catch (IOException e) {
             e.printStackTrace();
