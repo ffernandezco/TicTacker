@@ -355,4 +355,65 @@ public class DatabaseHelper {
             return false;
         }
     }
+
+    public void getProfile(String username, ProfileCallback callback) {
+        executorService.execute(() -> {
+            Map<String, Object> data = new HashMap<>();
+            data.put("action", "get_profile");
+            data.put("username", username);
+
+            try {
+                JsonObject jsonResponse = ApiClient.getInstance().post("profile.php", data);
+                if (jsonResponse != null && jsonResponse.has("success") && jsonResponse.get("success").getAsBoolean()) {
+                    JsonObject profileData = jsonResponse.getAsJsonObject("data");
+                    UserProfile profile = new UserProfile();
+                    profile.username = username;
+
+                    if (profileData.has("name") && !profileData.get("name").isJsonNull()) {
+                        profile.name = profileData.get("name").getAsString();
+                    }
+                    if (profileData.has("surname") && !profileData.get("surname").isJsonNull()) {
+                        profile.surname = profileData.get("surname").getAsString();
+                    }
+                    if (profileData.has("birthdate") && !profileData.get("birthdate").isJsonNull()) {
+                        profile.birthdate = profileData.get("birthdate").getAsString();
+                    }
+                    if (profileData.has("email") && !profileData.get("email").isJsonNull()) {
+                        profile.email = profileData.get("email").getAsString();
+                    }
+
+                    new Handler(Looper.getMainLooper()).post(() -> callback.onProfileReceived(profile));
+                    return;
+                }
+            } catch (Exception e) {
+                Log.e("DatabaseHelper", "Error al obtener el perfil del usuario", e);
+            }
+            new Handler(Looper.getMainLooper()).post(() -> callback.onProfileReceived(null));
+        });
+    }
+
+    public void updateProfile(UserProfile profile, BooleanCallback callback) {
+        executorService.execute(() -> {
+            Map<String, Object> data = new HashMap<>();
+            data.put("action", "update_profile");
+            data.put("username", profile.username);
+            data.put("name", profile.name != null ? profile.name : "");
+            data.put("surname", profile.surname != null ? profile.surname : "");
+            data.put("birthdate", profile.birthdate != null ? profile.birthdate : "");
+            data.put("email", profile.email != null ? profile.email : "");
+
+            try {
+                JsonObject response = ApiClient.getInstance().post("profile.php", data);
+                boolean success = response.get("success").getAsBoolean();
+                new Handler(Looper.getMainLooper()).post(() -> callback.onResult(success));
+            } catch (IOException e) {
+                Log.e("DatabaseHelper", "Error al actualizar el perfil del usuario", e);
+                new Handler(Looper.getMainLooper()).post(() -> callback.onResult(false));
+            }
+        });
+    }
+
+    public interface ProfileCallback {
+        void onProfileReceived(UserProfile profile);
+    }
 }

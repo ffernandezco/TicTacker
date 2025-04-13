@@ -97,4 +97,21 @@
     <string name="fichaje_update_error">Error al actualizar el fichaje</string>
     <string name="no_registrada">No registrada</string>
     <string name="settings_saved">Ajustes guardados</string>
+    <string name="profile">Perfil</string>
+    <string name="my_profile">Mi perfil</string>
+    <string name="name">Nombre</string>
+    <string name="surname">Apellidos</string>
+    <string name="email">Correo electrónico</string>
+    <string name="birthdate">Fecha de nacimiento</string>
+    <string name="save_profile">Guardar perfil</string>
+    <string name="all_fields_required">Todos los campos son requeridos</string>
+    <string name="invalid_email">Correo electrónico inválido</string>
+    <string name="invalid_date">Fecha de nacimiento inválida</string>
+    <string name="must_be_adult">La edad mínima es de 18 años</string>
+    <string name="profile_saved">Perfil guardado</string>
+    <string name="error_saving_profile">Error al guardar o crear el perfil</string>
+    <string name="complete_profile">Complete your profile</string>
+    <string name="complete_profile_prompt">Would you like to complete your profile now?</string>
+    <string name="now">Now</string>
+    <string name="later">Later</string>
 </resources>

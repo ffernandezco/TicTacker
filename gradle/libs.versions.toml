@@ -1,6 +1,7 @@
 [versions]
 agp = "8.9.1"
 cardview = "1.0.0"
+circleimageview = "3.1.0"
 gson = "2.8.8"
 junit = "4.13.2"
 junitVersion = "1.2.1"
@@ -26,6 +27,7 @@ androidx-navigation-fragment = { module = "androidx.navigation:navigation-fragme
 androidx-navigation-ui = { module = "androidx.navigation:navigation-ui", version.ref = "navigationFragment" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "roomCompiler" }
 cardview = { module = "androidx.cardview:cardview", version.ref = "cardview" }
+circleimageview = { module = "de.hdodenhof:circleimageview", version.ref = "circleimageview" }
 com_google-material = { module = "com,google.android.material:material" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }

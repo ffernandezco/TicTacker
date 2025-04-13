@@ -1,6 +1,7 @@
 package eus.ehu.tictacker;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.widget.Button;
@@ -8,6 +9,7 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.util.concurrent.ExecutorService;
@@ -48,9 +50,24 @@ public class SignupActivity extends AppCompatActivity {
                         buttonSignup.setEnabled(true);
                         if (success) {
                             Toast.makeText(SignupActivity.this, getString(R.string.registro_exitoso), Toast.LENGTH_SHORT).show();
-                            // Redirigir a login
-                            startActivity(new Intent(SignupActivity.this, LoginActivity.class));
-                            finish();
+                            SharedPreferences sharedPreferences = getSharedPreferences("app_prefs", MODE_PRIVATE);
+                            sharedPreferences.edit().putString("usuario_actual", username).apply();
+
+                            // Dialog para ompletar perfil
+                            new AlertDialog.Builder(SignupActivity.this)
+                                    .setTitle(R.string.complete_profile)
+                                    .setMessage(R.string.complete_profile_prompt)
+                                    .setPositiveButton(R.string.now, (dialog, which) -> {
+                                        Intent intent = new Intent(SignupActivity.this, MainActivity.class);
+                                        intent.putExtra("openProfile", true);
+                                        startActivity(intent);
+                                        finish();
+                                    })
+                                    .setNegativeButton(R.string.later, (dialog, which) -> {
+                                        startActivity(new Intent(SignupActivity.this, MainActivity.class));
+                                        finish();
+                                    })
+                                    .show();
                         } else {
                             Toast.makeText(SignupActivity.this, getString(R.string.el_nombre_de_usuario_ya_existe), Toast.LENGTH_SHORT).show();
                         }

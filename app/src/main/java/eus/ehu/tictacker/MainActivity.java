@@ -1,5 +1,7 @@
 package eus.ehu.tictacker;
 
+import static androidx.core.content.ContentProviderCompat.requireContext;
+
 import android.Manifest;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -10,6 +12,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -33,6 +36,8 @@ import com.google.android.material.navigation.NavigationView;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
+import de.hdodenhof.circleimageview.CircleImageView;
+
 public class MainActivity extends AppCompatActivity {
 
     private DrawerLayout drawerLayout;
@@ -41,11 +46,13 @@ public class MainActivity extends AppCompatActivity {
     private static final int NOTIFICATION_PERMISSION_REQUEST_CODE = 1002;
     private static final String WORK_TAG = "work_time_checker";
     private SharedPreferences sharedPreferences;
+    private DatabaseHelper dbHelper;
 
     private ActivityResultLauncher<String> requestPermissionLauncher;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        dbHelper = new DatabaseHelper(this);
         applyLanguageFromPreferences();
         getWindow().getDecorView().setSystemUiVisibility(
                 View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
@@ -99,6 +106,7 @@ public class MainActivity extends AppCompatActivity {
 
             // Configura AppBarConfiguration
             appBarConfiguration = new AppBarConfiguration.Builder(
+                    R.id.nav_profile,
                     R.id.nav_clockin,
                     R.id.nav_history,
                     R.id.nav_settings)
@@ -179,5 +187,23 @@ public class MainActivity extends AppCompatActivity {
                 .build();
 
         WorkManager.getInstance(this).enqueue(workRequest);
+    }
+
+    private void setupNavigationView(NavigationView navigationView) {
+        View headerView = navigationView.getHeaderView(0);
+
+        // Configurar imagen
+        CircleImageView profileImage = headerView.findViewById(R.id.nav_header_profile_image);
+        TextView usernameText = headerView.findViewById(R.id.nav_header_username);
+
+        // Configurar nombre usuario
+        String username = dbHelper.getCurrentUsername(this);
+        usernameText.setText(username);
+
+        // Permitir pulsar imagen para acceder al perfil
+        profileImage.setOnClickListener(v -> {
+            drawerLayout.closeDrawer(GravityCompat.START);
+            navController.navigate(R.id.nav_profile);
+        });
     }
 }
