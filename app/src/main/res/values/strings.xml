@@ -96,4 +96,5 @@
     <string name="history_delete_error">Error al borrar el historial</string>
     <string name="fichaje_update_error">Error al actualizar el fichaje</string>
     <string name="no_registrada">No registrada</string>
+    <string name="settings_saved">Ajustes guardados</string>
 </resources>

@@ -207,15 +207,19 @@ public class SettingsFragment extends Fragment {
         String lang = prefs.getString("language", "es");
         spinnerLanguage.setSelection(lang.equals("es") ? 0 : 1);
 
-        dbHelper.getSettings(settings -> {
-            selectedHours = (int) settings[0];
-            selectedMinutes = Math.round((settings[0] - selectedHours) * 60 / MINUTE_INCREMENT) * MINUTE_INCREMENT;
+        dbHelper.getSettings(new DatabaseHelper.SettingsCallback() {
+            @Override
+            public void onSettingsReceived(float[] settings) {
+                requireActivity().runOnUiThread(() -> {
+                    float weeklyHours = settings[0];
+                    selectedHours = (int) weeklyHours;
+                    selectedMinutes = Math.round((weeklyHours - selectedHours) * 60);
 
-            requireActivity().runOnUiThread(() -> {
-                updateHoursDisplay();
-                updateMinutesDisplay();
-                setSelectedDays((int) settings[1]);
-            });
+                    updateHoursDisplay();
+                    updateMinutesDisplay();
+                    setSelectedDays((int) settings[1]);
+                });
+            }
         });
     }
 
@@ -238,6 +242,7 @@ public class SettingsFragment extends Fragment {
             return;
         }
 
+        // Guardar logo si hay uno seleccionado
         if (selectedLogoUri != null) {
             SharedPreferences prefs = requireActivity().getSharedPreferences("AppPrefs", requireContext().MODE_PRIVATE);
             SharedPreferences.Editor editor = prefs.edit();
@@ -245,14 +250,20 @@ public class SettingsFragment extends Fragment {
             editor.apply();
         }
 
-        saveLanguagePreference(selectedLanguage);
+        // Guardar configuración en servidor
         dbHelper.saveSettings(weeklyHours, workingDays, success -> {
-            if (success) {
-                setAppLocale(selectedLanguage);
-                restartApp();
-            } else {
-                Toast.makeText(requireContext(), R.string.settings_save_error, Toast.LENGTH_SHORT).show();
-            }
+            requireActivity().runOnUiThread(() -> {
+                if (success) {
+                    // Guardar preferencia de idioma localmente
+                    saveLanguagePreference(selectedLanguage);
+                    // Aplicar cambios de idioma
+                    setAppLocale(selectedLanguage);
+                    Toast.makeText(requireContext(), R.string.settings_saved, Toast.LENGTH_SHORT).show();
+                    restartApp();
+                } else {
+                    Toast.makeText(requireContext(), R.string.settings_save_error, Toast.LENGTH_SHORT).show();
+                }
+            });
         });
     }
 

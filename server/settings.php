@@ -9,17 +9,28 @@ $action = $data['action'];
 $response = ["success" => false, "data" => []];
 
 if ($action == 'save') {
-    $query = "SELECT id FROM settings LIMIT 1";
-    $result = $con->query($query);
+    // Verificar que los datos requeridos están presentes
+    if (!isset($data['weekly_hours']) || !isset($data['working_days'])) {
+        $response["error"] = "Missing required parameters";
+        echo json_encode($response);
+        exit;
+    }
 
-    if ($result->num_rows > 0) {
+    $weeklyHours = floatval($data['weekly_hours']);
+    $workingDays = intval($data['working_days']);
+
+    // Verificar si ya existe una configuración
+    $checkQuery = "SELECT id FROM settings LIMIT 1";
+    $checkResult = $con->query($checkQuery);
+
+    if ($checkResult->num_rows > 0) {
         $query = "UPDATE settings SET weekly_hours = ?, working_days = ? WHERE id = 1";
     } else {
-        $query = "INSERT INTO settings (id, weekly_hours, working_days) VALUES (1, ?, ?)";
+        $query = "INSERT INTO settings (weekly_hours, working_days) VALUES (?, ?)";
     }
 
     $stmt = $con->prepare($query);
-    $stmt->bind_param("di", $data['weekly_hours'], $data['working_days']);
+    $stmt->bind_param("di", $weeklyHours, $workingDays);
     $response["success"] = $stmt->execute();
     $stmt->close();
 } elseif ($action == 'get') {
@@ -29,13 +40,14 @@ if ($action == 'save') {
     if ($result->num_rows > 0) {
         $row = $result->fetch_assoc();
         $response["data"] = [
-            "WeeklyHours" => $row['weekly_hours'],
-            "WorkingDays" => $row['working_days']
+            "weekly_hours" => floatval($row['weekly_hours']),
+            "working_days" => intval($row['working_days'])
         ];
     } else {
+        // Valores por defecto si no hay configuración
         $response["data"] = [
-            "WeeklyHours" => 40.0,
-            "WorkingDays" => 5
+            "weekly_hours" => 40.0,
+            "working_days" => 5
         ];
     }
     $response["success"] = true;
