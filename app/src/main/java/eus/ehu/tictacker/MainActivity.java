@@ -116,6 +116,14 @@ public class MainActivity extends AppCompatActivity {
             // Vincula la Toolbar y el NavigationView asociado con NavController
             NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
             NavigationUI.setupWithNavController(navigationView, navController);
+
+            View headerView = navigationView.getHeaderView(0);
+            ImageView profileIcon = headerView.findViewById(R.id.nav_header_profile_image);
+
+            profileIcon.setOnClickListener(v -> {
+                drawerLayout.closeDrawer(GravityCompat.START);
+                navController.navigate(R.id.nav_profile);
+            });
         }
     }
 

@@ -1,15 +1,19 @@
-package eus.ehu.tictacker;
+package eus.ehu.tictacker.fragments;
 
 import android.app.DatePickerDialog;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.navigation.Navigation;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
@@ -20,13 +24,19 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
 
+import eus.ehu.tictacker.DatabaseHelper;
+import eus.ehu.tictacker.LoginActivity;
+import eus.ehu.tictacker.R;
+import eus.ehu.tictacker.UserProfile;
+
 public class ProfileFragment extends Fragment {
 
     private TextInputEditText editTextName, editTextSurname, editTextEmail, editTextBirthdate;
-    private MaterialButton buttonSaveProfile;
+    private MaterialButton buttonSaveProfile, buttonLogout;
     private DatabaseHelper dbHelper;
     private SimpleDateFormat dateFormat;
     private String username;
+    private TextView textViewProfileTitle;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -47,14 +57,16 @@ public class ProfileFragment extends Fragment {
         editTextEmail = view.findViewById(R.id.editTextEmail);
         editTextBirthdate = view.findViewById(R.id.editTextBirthdate);
         buttonSaveProfile = view.findViewById(R.id.buttonSaveProfile);
+        buttonLogout = view.findViewById(R.id.buttonLogout);
+        textViewProfileTitle = view.findViewById(R.id.textViewProfileTitle);
 
-        // Necesario para las fechas de nacimientos
+        textViewProfileTitle.setText(getString(R.string.profile_of, username));
+
         editTextBirthdate.setOnClickListener(v -> showDatePickerDialog());
-
-        // Hacer que se muestren los datos guardados
         loadProfileData();
 
         buttonSaveProfile.setOnClickListener(v -> saveProfileData());
+        buttonLogout.setOnClickListener(v -> logoutUser());
     }
 
     private void loadProfileData() {
@@ -71,7 +83,6 @@ public class ProfileFragment extends Fragment {
     private void showDatePickerDialog() {
         final Calendar calendar = Calendar.getInstance();
 
-        // Fecha inicial -> Actual
         String currentDate = editTextBirthdate.getText().toString();
         if (!currentDate.isEmpty()) {
             try {
@@ -94,7 +105,6 @@ public class ProfileFragment extends Fragment {
                 },
                 year, month, day);
 
-        // Evitar menos de 18 años
         Calendar maxDate = Calendar.getInstance();
         maxDate.add(Calendar.YEAR, -18);
         datePickerDialog.getDatePicker().setMaxDate(maxDate.getTimeInMillis());
@@ -108,19 +118,16 @@ public class ProfileFragment extends Fragment {
         String email = editTextEmail.getText().toString().trim();
         String birthdate = editTextBirthdate.getText().toString().trim();
 
-        // Validación de campos
         if (name.isEmpty() || surname.isEmpty() || email.isEmpty() || birthdate.isEmpty()) {
             Toast.makeText(requireContext(), R.string.all_fields_required, Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // Validación de email
         if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
             editTextEmail.setError(getString(R.string.invalid_email));
             return;
         }
 
-        // Validar edad
         try {
             Date birthdateDate = dateFormat.parse(birthdate);
             Calendar dob = Calendar.getInstance();
@@ -144,7 +151,6 @@ public class ProfileFragment extends Fragment {
             return;
         }
 
-        // Crear y/o guardar el perfil
         UserProfile profile = new UserProfile();
         profile.username = username;
         profile.name = name;
@@ -155,9 +161,22 @@ public class ProfileFragment extends Fragment {
         dbHelper.updateProfile(profile, success -> {
             if (success) {
                 Toast.makeText(requireContext(), R.string.profile_saved, Toast.LENGTH_SHORT).show();
+                Navigation.findNavController(requireView()).navigate(R.id.nav_clockin);
             } else {
                 Toast.makeText(requireContext(), R.string.error_saving_profile, Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void logoutUser() {
+        SharedPreferences sharedPreferences = requireActivity().getSharedPreferences("app_prefs", requireContext().MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.remove("usuario_actual");
+        editor.apply();
+
+        Intent intent = new Intent(requireContext(), LoginActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        Toast.makeText(requireContext(), R.string.logout_success, Toast.LENGTH_SHORT).show();
     }
 }

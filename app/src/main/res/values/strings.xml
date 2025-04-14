@@ -114,4 +114,5 @@
     <string name="complete_profile_prompt">Would you like to complete your profile now?</string>
     <string name="now">Now</string>
     <string name="later">Later</string>
+    <string name="profile_of">"Perfil de %1$s"</string>
 </resources>
