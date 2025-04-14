@@ -110,9 +110,19 @@ public class MainActivity extends AppCompatActivity {
         if (navHostFragment != null) {
             navController = navHostFragment.getNavController();
 
+            // Configurar el listener para cambios de destino
+            navController.addOnDestinationChangedListener((controller, destination, arguments) -> {
+                // Mostrar u ocultar el botón de retroceso según el destino
+                if (destination.getId() == R.id.nav_profile) {
+                    getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+                    getSupportActionBar().setHomeAsUpIndicator(R.drawable.ic_arrow_back);
+                } else {
+                    getSupportActionBar().setDisplayHomeAsUpEnabled(false);
+                }
+            });
+
             // Configura AppBarConfiguration
             appBarConfiguration = new AppBarConfiguration.Builder(
-                    R.id.nav_profile,
                     R.id.nav_clockin,
                     R.id.nav_history,
                     R.id.nav_settings)
@@ -205,44 +215,60 @@ public class MainActivity extends AppCompatActivity {
 
     private void setupNavigationView(NavigationView navigationView) {
         View headerView = navigationView.getHeaderView(0);
-
-        // Configurar imagen
         CircleImageView profileImage = headerView.findViewById(R.id.nav_header_profile_image);
         TextView usernameText = headerView.findViewById(R.id.nav_header_username);
 
-        // Configurar nombre usuario
         String username = dbHelper.getCurrentUsername(this);
         usernameText.setText(username);
 
-        // Cargar datos del perfil
         dbHelper.getProfile(username, profile -> {
-            if (profile != null) {
-                // Display personalized greeting if name exists
-                if (profile.name != null && !profile.name.isEmpty()) {
-                    usernameText.setText(getString(R.string.hello_user, profile.name));
-                }
+            if (profile != null && profile.name != null && !profile.name.isEmpty()) {
+                usernameText.setText(getString(R.string.hello_user, profile.name));
+            }
 
-                // Cargar la foto de perfil si está disponible
-                if (profile.profilePhoto != null && !profile.profilePhoto.isEmpty()) {
-                    try {
-                        byte[] decodedString = Base64.decode(profile.profilePhoto, Base64.DEFAULT);
-                        Bitmap bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
-                        profileImage.setImageBitmap(bitmap);
-                    } catch (Exception e) {
-                        Log.e("MainActivity", "Error al cargar la foto de perfil", e);
-                        profileImage.setImageResource(R.drawable.ic_profile);
-                    }
+            if (profile != null && profile.profilePhoto != null && !profile.profilePhoto.isEmpty()) {
+                try {
+                    byte[] decodedString = Base64.decode(profile.profilePhoto, Base64.DEFAULT);
+                    Bitmap bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+                    profileImage.setImageBitmap(bitmap);
+                } catch (Exception e) {
+                    profileImage.setImageResource(R.drawable.ic_profile);
                 }
             }
         });
 
-        // Permitir pulsar imagen para acceder al perfil
+        // Configurar el listener del menú de navegación
+        navigationView.setNavigationItemSelectedListener(item -> {
+            int itemId = item.getItemId();
+
+            // Cerrar el drawer cuando se selecciona un ítem
+            drawerLayout.closeDrawer(GravityCompat.START);
+
+            // Verificar si ya estamos en el destino seleccionado
+            if (navController.getCurrentDestination() != null &&
+                    navController.getCurrentDestination().getId() == itemId) {
+                return false;
+            }
+
+            // Navegar al destino seleccionado
+            navController.navigate(itemId);
+            return true;
+        });
+
+        // Configurar el clic en la imagen de perfil
         profileImage.setOnClickListener(v -> {
             drawerLayout.closeDrawer(GravityCompat.START);
-            // Utilizar un Handler para permitir cerrar después el Fragment
-            new Handler().postDelayed(() -> {
+
+            // Verificar si ya estamos en el perfil
+            if (navController.getCurrentDestination() != null &&
+                    navController.getCurrentDestination().getId() != R.id.nav_profile) {
                 navController.navigate(R.id.nav_profile);
-            }, 300); // 300ms delay should be enough for drawer animation
+            }
         });
+    }
+
+    public void setSelectedMenuItem(int menuItemId) {
+        NavigationView navigationView = findViewById(R.id.nav_view);
+        navigationView.setCheckedItem(menuItemId);
     }
 }

@@ -6,16 +6,16 @@
     app:startDestination="@id/nav_clockin">
 
     <fragment
-        android:id="@+id/nav_profile"
-        android:name="eus.ehu.tictacker.fragments.ProfileFragment"
-        android:label="@string/profile"
-        tools:layout="@layout/fragment_profile" />
-
-    <fragment
         android:id="@+id/nav_clockin"
         android:name="eus.ehu.tictacker.fragments.ClockInFragment"
         android:label="@string/clock_in"
         tools:layout="@layout/fragment_clock_in" />
+
+    <fragment
+        android:id="@+id/nav_profile"
+        android:name="eus.ehu.tictacker.fragments.ProfileFragment"
+        android:label="@string/profile"
+        tools:layout="@layout/fragment_profile" />
 
     <fragment
         android:id="@+id/nav_history"

@@ -217,7 +217,7 @@ public class ProfileFragment extends Fragment {
         dbHelper.updateProfile(profile, success -> {
             if (success) {
                 Toast.makeText(requireContext(), R.string.profile_saved, Toast.LENGTH_SHORT).show();
-                Navigation.findNavController(requireView()).navigate(R.id.nav_clockin);
+                Navigation.findNavController(requireView()).popBackStack(); // Volver atrás
             } else {
                 Toast.makeText(requireContext(), R.string.error_saving_profile, Toast.LENGTH_SHORT).show();
             }
