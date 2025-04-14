@@ -418,6 +418,40 @@ public class DatabaseHelper {
         });
     }
 
+    public void obtenerFichajePorId(int fichajeId, String username, FichajeCallback callback) {
+        executorService.execute(() -> {
+            Map<String, Object> data = new HashMap<>();
+            data.put("action", "get_by_id");
+            data.put("id", fichajeId);
+            data.put("username", username);
+
+            try {
+                JsonObject jsonResponse = ApiClient.getInstance().post("fichajes.php", data);
+                if (jsonResponse != null && jsonResponse.has("success") && jsonResponse.get("success").getAsBoolean()) {
+                    if (jsonResponse.has("data")) {
+                        JsonObject fichajeJson = jsonResponse.getAsJsonObject("data");
+                        Fichaje fichaje = new Fichaje();
+                        fichaje.id = fichajeJson.has("id") ? fichajeJson.get("id").getAsInt() : 0;
+                        fichaje.fecha = fichajeJson.has("fecha") ? fichajeJson.get("fecha").getAsString() : "";
+                        fichaje.horaEntrada = fichajeJson.has("hora_entrada") ?
+                                (fichajeJson.get("hora_entrada").isJsonNull() ? null : fichajeJson.get("hora_entrada").getAsString()) : null;
+                        fichaje.horaSalida = fichajeJson.has("hora_salida") ?
+                                (fichajeJson.get("hora_salida").isJsonNull() ? null : fichajeJson.get("hora_salida").getAsString()) : null;
+                        fichaje.latitud = fichajeJson.has("latitud") ? fichajeJson.get("latitud").getAsDouble() : 0.0;
+                        fichaje.longitud = fichajeJson.has("longitud") ? fichajeJson.get("longitud").getAsDouble() : 0.0;
+                        fichaje.username = username;
+
+                        new Handler(Looper.getMainLooper()).post(() -> callback.onFichajeReceived(fichaje));
+                        return;
+                    }
+                }
+            } catch (IOException e) {
+                Log.e("DatabaseHelper", "Error obteniendo el fichaje por ID", e);
+            }
+            new Handler(Looper.getMainLooper()).post(() -> callback.onFichajeReceived(null));
+        });
+    }
+
     public interface ProfileCallback {
         void onProfileReceived(UserProfile profile);
     }

@@ -152,6 +152,30 @@ switch ($action) {
             $response["data"] = ["id" => $stmt->insert_id];
         }
         break;
+
+    case 'get_by_id':
+        $query = "SELECT id, fecha, hora_entrada, hora_salida, latitud, longitud, username
+                  FROM fichajes
+                  WHERE id = ? AND username = ?";
+        $stmt = $con->prepare($query);
+        $stmt->bind_param("is", $data['id'], $username);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result->num_rows > 0) {
+            $row = $result->fetch_assoc();
+            $response["data"] = [
+                "id" => $row['id'],
+                "fecha" => $row['fecha'],
+                "hora_entrada" => $row['hora_entrada'],
+                "hora_salida" => $row['hora_salida'],
+                "latitud" => $row['latitud'],
+                "longitud" => $row['longitud'],
+                "username" => $row['username']
+            ];
+            $response["success"] = true;
+        }
+        break;
 }
 
 echo json_encode($response);

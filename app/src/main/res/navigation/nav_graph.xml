@@ -21,7 +21,21 @@
         android:id="@+id/nav_history"
         android:name="eus.ehu.tictacker.fragments.HistoryFragment"
         android:label="@string/history"
-        tools:layout="@layout/fragment_history" />
+        tools:layout="@layout/fragment_history">
+        <action
+            android:id="@+id/action_nav_history_to_nav_fichaje_details"
+            app:destination="@id/nav_fichaje_details" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/nav_fichaje_details"
+        android:name="eus.ehu.tictacker.fragments.FichajeDetailsFragment"
+        android:label="@string/detalles_fichaje"
+        tools:layout="@layout/fragment_fichaje_details">
+        <argument
+            android:name="fichaje_id"
+            app:argType="integer" />
+    </fragment>
 
     <fragment
         android:id="@+id/nav_settings"

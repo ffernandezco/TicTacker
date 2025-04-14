@@ -17,6 +17,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -130,8 +131,13 @@ public class HistoryFragment extends Fragment implements FichajeDetailsDialog.On
     }
 
     private void showFichajeDetails(Fichaje fichaje) {
-        new FichajeDetailsDialog(fichaje, this)
-                .show(getParentFragmentManager(), "FichajeDetailsDialog");
+        // Obtener el ID del fichaje para mostrar sus datos
+        Bundle bundle = new Bundle();
+        bundle.putInt("fichaje_id", fichaje.id);
+
+        // Pasar a la vista del fichaje
+        Navigation.findNavController(requireView())
+                .navigate(R.id.action_nav_history_to_nav_fichaje_details, bundle);
     }
 
     @Override

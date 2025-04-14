@@ -110,10 +110,9 @@ public class MainActivity extends AppCompatActivity {
         if (navHostFragment != null) {
             navController = navHostFragment.getNavController();
 
-            // Configurar el listener para cambios de destino
             navController.addOnDestinationChangedListener((controller, destination, arguments) -> {
                 // Mostrar u ocultar el botón de retroceso según el destino
-                if (destination.getId() == R.id.nav_profile) {
+                if (destination.getId() == R.id.nav_profile || destination.getId() == R.id.nav_fichaje_details) {
                     getSupportActionBar().setDisplayHomeAsUpEnabled(true);
                     getSupportActionBar().setHomeAsUpIndicator(R.drawable.ic_arrow_back);
                 } else {
@@ -121,7 +120,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
 
-            // Configura AppBarConfiguration
+            // Configurar AppBar
             appBarConfiguration = new AppBarConfiguration.Builder(
                     R.id.nav_clockin,
                     R.id.nav_history,
