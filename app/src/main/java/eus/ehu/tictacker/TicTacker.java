@@ -3,6 +3,7 @@ package eus.ehu.tictacker;
 import android.app.Application;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
+import android.preference.PreferenceManager;
 
 import java.util.Locale;
 
@@ -10,6 +11,12 @@ public class TicTacker extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        org.osmdroid.config.Configuration.getInstance().load(
+                getApplicationContext(),
+                PreferenceManager.getDefaultSharedPreferences(getApplicationContext())
+        );
+        org.osmdroid.config.Configuration.getInstance().setUserAgentValue(getPackageName());
+
         applyLanguageFromPreferences();
     }
 
