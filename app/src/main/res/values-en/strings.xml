@@ -115,4 +115,12 @@
     <string name="now">Now</string>
     <string name="later">Later</string>
     <string name="profile_of">"Perfil de %1$s"</string>
+    <string name="error_loading_image">Error al cargar la imagen</string>
+    <string name="take_photo">Hacer foto</string>
+    <string name="choose_from_gallery">Galería</string>
+    <string name="change_profile_photo">Cambiar</string>
+    <string name="camera_permission_required">Permiso de cámara requerido</string>
+    <string name="error_creating_image_file">Error al crear la foto de perfil</string>
+    <string name="change_photo">Cambiar foto</string>
+    <string name="hello_user">¡Hola, %1$s!</string>
 </resources>

@@ -381,6 +381,10 @@ public class DatabaseHelper {
                     if (profileData.has("email") && !profileData.get("email").isJsonNull()) {
                         profile.email = profileData.get("email").getAsString();
                     }
+                    // Cargar la foto de perfil
+                    if (profileData.has("profile_photo") && !profileData.get("profile_photo").isJsonNull()) {
+                        profile.profilePhoto = profileData.get("profile_photo").getAsString();
+                    }
 
                     new Handler(Looper.getMainLooper()).post(() -> callback.onProfileReceived(profile));
                     return;
@@ -401,6 +405,7 @@ public class DatabaseHelper {
             data.put("surname", profile.surname != null ? profile.surname : "");
             data.put("birthdate", profile.birthdate != null ? profile.birthdate : "");
             data.put("email", profile.email != null ? profile.email : "");
+            data.put("profile_photo", profile.profilePhoto != null ? profile.profilePhoto : "");
 
             try {
                 JsonObject response = ApiClient.getInstance().post("profile.php", data);

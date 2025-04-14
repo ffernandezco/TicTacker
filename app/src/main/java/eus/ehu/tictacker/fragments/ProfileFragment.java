@@ -1,23 +1,44 @@
 package eus.ehu.tictacker.fragments;
 
+import android.app.Activity;
 import android.app.DatePickerDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
+import android.util.Base64;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.Manifest;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.PickVisualMediaRequest;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.Navigation;
 
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.imageview.ShapeableImageView;
 import com.google.android.material.textfield.TextInputEditText;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -37,6 +58,16 @@ public class ProfileFragment extends Fragment {
     private SimpleDateFormat dateFormat;
     private String username;
     private TextView textViewProfileTitle;
+    private ShapeableImageView imageViewProfile;
+    private FloatingActionButton fabChangePhoto;
+    private Uri currentPhotoUri;
+    private String base64Image;
+    private static final int REQUEST_IMAGE_CAPTURE = 1;
+    private static final int REQUEST_PICK_IMAGE = 2;
+
+    // ActivityResultLaunchers
+    private ActivityResultLauncher<Intent> takePictureLauncher;
+    private ActivityResultLauncher<PickVisualMediaRequest> pickMediaLauncher;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -63,10 +94,21 @@ public class ProfileFragment extends Fragment {
         textViewProfileTitle.setText(getString(R.string.profile_of, username));
 
         editTextBirthdate.setOnClickListener(v -> showDatePickerDialog());
+
+        imageViewProfile = view.findViewById(R.id.imageViewProfile);
+        fabChangePhoto = view.findViewById(R.id.fabChangePhoto);
+
+        // Selector de imágenes
+        registerImagePickerLaunchers();
+
+        fabChangePhoto.setOnClickListener(v -> showImagePickerOptions());
+
         loadProfileData();
 
         buttonSaveProfile.setOnClickListener(v -> saveProfileData());
         buttonLogout.setOnClickListener(v -> logoutUser());
+
+
     }
 
     private void loadProfileData() {
@@ -76,6 +118,19 @@ public class ProfileFragment extends Fragment {
                 editTextSurname.setText(profile.surname);
                 editTextEmail.setText(profile.email);
                 editTextBirthdate.setText(profile.birthdate);
+
+                // Cargar imagen de perfil si está disponible
+                if (profile.profilePhoto != null && !profile.profilePhoto.isEmpty()) {
+                    // Cargar imagen desde el Base64
+                    try {
+                        byte[] decodedString = Base64.decode(profile.profilePhoto, Base64.DEFAULT);
+                        Bitmap bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+                        imageViewProfile.setImageBitmap(bitmap);
+                        base64Image = profile.profilePhoto;
+                    } catch (Exception e) {
+                        Log.e("ProfileFragment", "Error al extraer imagen base64", e);
+                    }
+                }
             }
         });
     }
@@ -157,6 +212,7 @@ public class ProfileFragment extends Fragment {
         profile.surname = surname;
         profile.email = email;
         profile.birthdate = birthdate;
+        profile.profilePhoto = base64Image;
 
         dbHelper.updateProfile(profile, success -> {
             if (success) {
@@ -166,6 +222,135 @@ public class ProfileFragment extends Fragment {
                 Toast.makeText(requireContext(), R.string.error_saving_profile, Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void registerImagePickerLaunchers() {
+        // Lanzar cámara
+        takePictureLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == Activity.RESULT_OK) {
+                        if (currentPhotoUri != null) {
+                            try {
+                                Bitmap bitmap = MediaStore.Images.Media.getBitmap(
+                                        requireContext().getContentResolver(), currentPhotoUri);
+                                imageViewProfile.setImageBitmap(bitmap);
+                                base64Image = bitmapToBase64(bitmap);
+                            } catch (IOException e) {
+                                Toast.makeText(requireContext(),
+                                        R.string.error_loading_image, Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    }
+                }
+        );
+
+        // Lanzar selector de imagen de la galería
+        pickMediaLauncher = registerForActivityResult(
+                new ActivityResultContracts.PickVisualMedia(),
+                uri -> {
+                    if (uri != null) {
+                        try {
+                            Bitmap bitmap = MediaStore.Images.Media.getBitmap(
+                                    requireContext().getContentResolver(), uri);
+                            imageViewProfile.setImageBitmap(bitmap);
+                            base64Image = bitmapToBase64(bitmap);
+                        } catch (IOException e) {
+                            Toast.makeText(requireContext(),
+                                    R.string.error_loading_image, Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                }
+        );
+    }
+
+    private void showImagePickerOptions() {
+        String[] options = {getString(R.string.take_photo), getString(R.string.choose_from_gallery)};
+
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.change_profile_photo)
+                .setItems(options, (dialog, which) -> {
+                    switch (which) {
+                        case 0: // Tomar fotografía con cámara
+                            checkCameraPermissionAndLaunch();
+                            break;
+                        case 1: // Elegir fotografía de la galería
+                            pickMediaLauncher.launch(new PickVisualMediaRequest.Builder()
+                                    .setMediaType(ActivityResultContracts.PickVisualMedia.ImageOnly.INSTANCE)
+                                    .build());
+                            break;
+                    }
+                })
+                .show();
+    }
+
+    private void checkCameraPermissionAndLaunch() {
+        if (ContextCompat.checkSelfPermission(
+                requireContext(), Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissionLauncher.launch(Manifest.permission.CAMERA);
+        } else {
+            takePicture();
+        }
+    }
+
+    private final ActivityResultLauncher<String> requestPermissionLauncher =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+                if (isGranted) {
+                    takePicture();
+                } else {
+                    Toast.makeText(requireContext(),
+                            R.string.camera_permission_required, Toast.LENGTH_SHORT).show();
+                }
+            });
+
+    private void takePicture() {
+        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+
+        // Create fichero para la imagen
+        File photoFile = null;
+        try {
+            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
+            String imageFileName = "JPEG_" + timeStamp + "_";
+            File storageDir = requireContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+            photoFile = File.createTempFile(imageFileName, ".jpg", storageDir);
+        } catch (IOException e) {
+            Toast.makeText(requireContext(),
+                    R.string.error_creating_image_file, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Si ha ido bien
+        if (photoFile != null) {
+            currentPhotoUri = FileProvider.getUriForFile(requireContext(),
+                    "eus.ehu.tictacker.fileprovider", photoFile);
+            takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, currentPhotoUri);
+            takePictureLauncher.launch(takePictureIntent);
+        }
+    }
+
+    private String bitmapToBase64(Bitmap bitmap) {
+        // Reducir tamaño para evitar sobrecarga
+        Bitmap resizedBitmap = getResizedBitmap(bitmap, 500);
+
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 80, byteArrayOutputStream);
+        byte[] byteArray = byteArrayOutputStream.toByteArray();
+        return Base64.encodeToString(byteArray, Base64.DEFAULT);
+    }
+
+    private Bitmap getResizedBitmap(Bitmap image, int maxSize) {
+        int width = image.getWidth();
+        int height = image.getHeight();
+
+        float bitmapRatio = (float) width / (float) height;
+        if (bitmapRatio > 1) {
+            width = maxSize;
+            height = (int) (width / bitmapRatio);
+        } else {
+            height = maxSize;
+            width = (int) (height * bitmapRatio);
+        }
+        return Bitmap.createScaledBitmap(image, width, height, true);
     }
 
     private void logoutUser() {

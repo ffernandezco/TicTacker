@@ -9,7 +9,7 @@ $action = $data['action'];
 $response = ["success" => false, "data" => []];
 
 if ($action == 'get_profile') {
-    $query = "SELECT name, surname, birthdate, email FROM user_profiles WHERE username = ?";
+    $query = "SELECT name, surname, birthdate, email, profile_photo FROM user_profiles WHERE username = ?";
     $stmt = $con->prepare($query);
     $stmt->bind_param("s", $data['username']);
     $stmt->execute();
@@ -21,7 +21,7 @@ if ($action == 'get_profile') {
     }
     $stmt->close();
 } elseif ($action == 'update_profile') {
-    // Comprobar si existe el perfil
+    // Comprobar si el perfil existe
     $checkQuery = "SELECT id FROM user_profiles WHERE username = ?";
     $checkStmt = $con->prepare($checkQuery);
     $checkStmt->bind_param("s", $data['username']);
@@ -30,15 +30,29 @@ if ($action == 'get_profile') {
     $checkStmt->close();
 
     if ($checkResult->num_rows > 0) {
-        // Actualizar perfil existente
-        $query = "UPDATE user_profiles SET name = ?, surname = ?, birthdate = ?, email = ? WHERE username = ?";
+        // Actualizar el perfil existente
+        $query = "UPDATE user_profiles SET name = ?, surname = ?, birthdate = ?, email = ?, profile_photo = ? WHERE username = ?";
         $stmt = $con->prepare($query);
-        $stmt->bind_param("sssss", $data['name'], $data['surname'], $data['birthdate'], $data['email'], $data['username']);
+        $stmt->bind_param("ssssss",
+            $data['name'],
+            $data['surname'],
+            $data['birthdate'],
+            $data['email'],
+            $data['profile_photo'],
+            $data['username']
+        );
     } else {
         // Crear nuevo perfil si no existe
-        $query = "INSERT INTO user_profiles (username, name, surname, birthdate, email) VALUES (?, ?, ?, ?, ?)";
+        $query = "INSERT INTO user_profiles (username, name, surname, birthdate, email, profile_photo) VALUES (?, ?, ?, ?, ?, ?)";
         $stmt = $con->prepare($query);
-        $stmt->bind_param("sssss", $data['username'], $data['name'], $data['surname'], $data['birthdate'], $data['email']);
+        $stmt->bind_param("ssssss",
+            $data['username'],
+            $data['name'],
+            $data['surname'],
+            $data['birthdate'],
+            $data['email'],
+            $data['profile_photo']
+        );
     }
 
     $response["success"] = $stmt->execute();

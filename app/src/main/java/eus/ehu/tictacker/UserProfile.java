@@ -11,6 +11,7 @@ public class UserProfile {
     public String surname;
     public String birthdate;
     public String email;
+    public String profilePhoto; // Foto de perfil (base64 - LONGTEXT)
 
     public UserProfile() {
         // Constructor por defecto

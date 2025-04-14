@@ -7,9 +7,14 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.util.Base64;
+import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -96,6 +101,7 @@ public class MainActivity extends AppCompatActivity {
         drawerLayout = findViewById(R.id.drawer_layout);
         NavigationView navigationView = findViewById(R.id.nav_view);
         applyCustomLogoToNavHeader(navigationView);
+        setupNavigationView(navigationView);
 
         // Configura NavController
         NavHostFragment navHostFragment = (NavHostFragment) getSupportFragmentManager()
@@ -208,10 +214,35 @@ public class MainActivity extends AppCompatActivity {
         String username = dbHelper.getCurrentUsername(this);
         usernameText.setText(username);
 
+        // Cargar datos del perfil
+        dbHelper.getProfile(username, profile -> {
+            if (profile != null) {
+                // Display personalized greeting if name exists
+                if (profile.name != null && !profile.name.isEmpty()) {
+                    usernameText.setText(getString(R.string.hello_user, profile.name));
+                }
+
+                // Cargar la foto de perfil si está disponible
+                if (profile.profilePhoto != null && !profile.profilePhoto.isEmpty()) {
+                    try {
+                        byte[] decodedString = Base64.decode(profile.profilePhoto, Base64.DEFAULT);
+                        Bitmap bitmap = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+                        profileImage.setImageBitmap(bitmap);
+                    } catch (Exception e) {
+                        Log.e("MainActivity", "Error al cargar la foto de perfil", e);
+                        profileImage.setImageResource(R.drawable.ic_profile);
+                    }
+                }
+            }
+        });
+
         // Permitir pulsar imagen para acceder al perfil
         profileImage.setOnClickListener(v -> {
             drawerLayout.closeDrawer(GravityCompat.START);
-            navController.navigate(R.id.nav_profile);
+            // Utilizar un Handler para permitir cerrar después el Fragment
+            new Handler().postDelayed(() -> {
+                navController.navigate(R.id.nav_profile);
+            }, 300); // 300ms delay should be enough for drawer animation
         });
     }
 }
