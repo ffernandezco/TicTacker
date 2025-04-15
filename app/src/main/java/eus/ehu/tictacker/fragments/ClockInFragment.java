@@ -117,7 +117,7 @@ public class ClockInFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        dbHelper.close();
+        //dbHelper.close();
         FichajeEvents.setListener(null);
     }
 

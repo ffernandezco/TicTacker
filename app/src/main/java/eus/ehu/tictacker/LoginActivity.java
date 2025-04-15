@@ -19,7 +19,7 @@ public class LoginActivity extends AppCompatActivity {
     private DatabaseHelper dbHelper;
     private SharedPreferences sharedPreferences;
     private TextView textViewSignupLink;
-    private ExecutorService executorService;
+    //private ExecutorService executorService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,7 +28,7 @@ public class LoginActivity extends AppCompatActivity {
 
         dbHelper = new DatabaseHelper(this);
         sharedPreferences = getSharedPreferences("app_prefs", MODE_PRIVATE);
-        executorService = Executors.newSingleThreadExecutor();
+        //executorService = Executors.newSingleThreadExecutor();
 
         editTextUsername = findViewById(R.id.editTextUsername);
         editTextPassword = findViewById(R.id.editTextPassword);
@@ -45,23 +45,21 @@ public class LoginActivity extends AppCompatActivity {
             String username = editTextUsername.getText().toString();
             String password = editTextPassword.getText().toString();
 
-            // Deshabilitar el botón para evitar múltiples peticiones
             buttonLogin.setEnabled(false);
-
-            // ExecutorService para realizar operaciones en segundo plano
-            executorService.execute(() -> {
-                final boolean isValid = dbHelper.validarUsuario(username, password);
-
-                runOnUiThread(() -> {
-                    buttonLogin.setEnabled(true);
-                    if (isValid) {
-                        sharedPreferences.edit().putString("usuario_actual", username).apply();
-                        startActivity(new Intent(LoginActivity.this, MainActivity.class));
-                        finish();
-                    } else {
-                        Toast.makeText(LoginActivity.this, "Credenciales incorrectas", Toast.LENGTH_SHORT).show();
-                    }
-                });
+            dbHelper.validarUsuario(username, password, new DatabaseHelper.BooleanCallback() {
+                @Override
+                public void onResult(boolean isValid) {
+                    runOnUiThread(() -> {
+                        buttonLogin.setEnabled(true);
+                        if (isValid) {
+                            sharedPreferences.edit().putString("usuario_actual", username).apply();
+                            startActivity(new Intent(LoginActivity.this, MainActivity.class));
+                            finish();
+                        } else {
+                            Toast.makeText(LoginActivity.this, "Credenciales incorrectas", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                }
             });
         });
     }
@@ -69,8 +67,8 @@ public class LoginActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (executorService != null) {
-            executorService.shutdown();
-        }
+        //if (executorService != null) {
+            //executorService.shutdown();
+        //}
     }
 }

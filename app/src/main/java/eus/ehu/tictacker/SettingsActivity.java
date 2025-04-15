@@ -264,6 +264,6 @@ public class SettingsActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        dbHelper.close();
+        //dbHelper.close();
     }
 }

@@ -80,7 +80,7 @@ public class HistoryFragment extends Fragment implements FichajeDetailsDialog.On
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        dbHelper.close();
+        //dbHelper.close();
     }
 
     private void setupActivityResultLaunchers() {

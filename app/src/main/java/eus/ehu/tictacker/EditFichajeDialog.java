@@ -142,7 +142,7 @@ public class EditFichajeDialog extends DialogFragment {
             fichaje.horaSalida = salidaText;
         }
 
-        // Actualizar ambos campos (entrada y salida)
+        // Actualizar ambos campos (entrada y salida) usando el nuevo DatabaseHelper
         databaseHelper.actualizarFichajeCompleto(fichaje, callback);
     }
 
@@ -160,6 +160,6 @@ public class EditFichajeDialog extends DialogFragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        databaseHelper.close();
+        //databaseHelper.close();
     }
 }

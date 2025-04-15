@@ -219,10 +219,10 @@ public class FichajeDetailsDialog extends DialogFragment implements EditFichajeD
             mapView.onDetach();
             mapView = null;  // Evitar exceso memoria
         }
-        if (databaseHelper != null) {
-            databaseHelper.close();
-            databaseHelper = null;  // Evitar exceso memoria
-        }
+        //if (databaseHelper != null) {
+            //databaseHelper.close();
+            //databaseHelper = null;  // Evitar exceso memoria
+        //}
     }
 
     private boolean hasLocationPermissions() {

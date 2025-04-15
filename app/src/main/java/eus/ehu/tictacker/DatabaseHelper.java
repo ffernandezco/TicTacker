@@ -2,16 +2,19 @@ package eus.ehu.tictacker;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.Log;
 
+import androidx.work.Data;
+import androidx.work.OneTimeWorkRequest;
+import androidx.work.WorkInfo;
+import androidx.work.WorkManager;
+
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 
-import java.io.IOException;
 import java.lang.reflect.Type;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -20,13 +23,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class DatabaseHelper {
     private Context context;
     private Gson gson;
-    private ExecutorService executorService;
+    private WorkManager workManager;
+
+    // Interfaces de callback
     public interface FichajesCallback {
         void onFichajesReceived(List<Fichaje> fichajes);
     }
@@ -47,326 +50,269 @@ public class DatabaseHelper {
         void onResult(String result);
     }
 
+    public interface ProfileCallback {
+        void onProfileReceived(UserProfile profile);
+    }
+
+    public interface JsonCallback {
+        void onResponse(JsonObject response);
+    }
+
     public DatabaseHelper(Context context) {
         this.context = context;
         this.gson = new Gson();
-        this.executorService = Executors.newSingleThreadExecutor();
+        this.workManager = WorkManager.getInstance(context);
     }
 
-    public void close() {
-        if (executorService != null && !executorService.isShutdown()) {
-            executorService.shutdown();
-        }
-    }
-
+    // Métodos adaptados para usar WorkManager
     public void insertarFichaje(Fichaje fichaje, BooleanCallback callback) {
-        executorService.execute(() -> {
-            Map<String, Object> data = new HashMap<>();
-            data.put("action", "insert_complete");
-            data.put("username", fichaje.username);
-            data.put("fecha", fichaje.fecha);
-            data.put("hora_entrada", fichaje.horaEntrada);
-            data.put("hora_salida", fichaje.horaSalida != null ? fichaje.horaSalida : "");
-            data.put("latitud", fichaje.latitud);
-            data.put("longitud", fichaje.longitud);
+        Data inputData = new Data.Builder()
+                .putString("endpoint", "fichajes.php")
+                .putString("action", "insert_complete")
+                .putString("param_username", fichaje.username)
+                .putString("param_fecha", fichaje.fecha)
+                .putString("param_hora_entrada", fichaje.horaEntrada)
+                .putString("param_hora_salida", fichaje.horaSalida != null ? fichaje.horaSalida : "")
+                .putString("param_latitud", String.valueOf(fichaje.latitud))
+                .putString("param_longitud", String.valueOf(fichaje.longitud))
+                .build();
 
-            try {
-                JsonObject response = ApiClient.getInstance().post("fichajes.php", data);
-                boolean success = response.get("success").getAsBoolean();
-                new Handler(Looper.getMainLooper()).post(() -> callback.onResult(success));
-            } catch (IOException e) {
-                Log.e("DatabaseHelper", "Error al insertar el fichaje", e);
-                new Handler(Looper.getMainLooper()).post(() -> callback.onResult(false));
+        executeWorker(inputData, new JsonCallback() {
+            @Override
+            public void onResponse(JsonObject response) {
+                boolean success = response != null && response.has("success") && response.get("success").getAsBoolean();
+                callback.onResult(success);
             }
         });
     }
 
     public void obtenerTodosLosFichajes(String username, FichajesCallback callback) {
-        executorService.execute(() -> {
-            Map<String, Object> data = new HashMap<>();
-            data.put("action", "get_all");
-            data.put("username", username);
+        Data inputData = new Data.Builder()
+                .putString("endpoint", "fichajes.php")
+                .putString("action", "get_all")
+                .putString("param_username", username)
+                .build();
 
-            try {
-                JsonObject jsonResponse = ApiClient.getInstance().post("fichajes.php", data);
-                if (jsonResponse != null && jsonResponse.has("success") && jsonResponse.get("success").getAsBoolean()) {
-                    List<Fichaje> result = new ArrayList<>();
-
-                    if (jsonResponse.has("data")) {
-                        for (JsonElement element : jsonResponse.getAsJsonArray("data")) {
-                            JsonObject obj = element.getAsJsonObject();
-                            Fichaje fichaje = new Fichaje();
-                            fichaje.id = obj.has("id") ? obj.get("id").getAsInt() : 0;
-                            fichaje.fecha = obj.has("fecha") ? obj.get("fecha").getAsString() : "";
-                            fichaje.horaEntrada = obj.has("hora_entrada") ?
-                                    (obj.get("hora_entrada").isJsonNull() ? null : obj.get("hora_entrada").getAsString()) : null;
-                            fichaje.horaSalida = obj.has("hora_salida") ?
-                                    (obj.get("hora_salida").isJsonNull() ? null : obj.get("hora_salida").getAsString()) : null;
-                            fichaje.latitud = obj.has("latitud") ? obj.get("latitud").getAsDouble() : 0.0;
-                            fichaje.longitud = obj.has("longitud") ? obj.get("longitud").getAsDouble() : 0.0;
-                            fichaje.username = username;
-
-                            result.add(fichaje);
-                        }
-                    }
-
-                    new Handler(Looper.getMainLooper()).post(() -> callback.onFichajesReceived(result));
-                    return;
+        executeWorker(inputData, new JsonCallback() {
+            @Override
+            public void onResponse(JsonObject response) {
+                List<Fichaje> result = new ArrayList<>();
+                if (response != null && response.has("success") && response.get("success").getAsBoolean() && response.has("data")) {
+                    result = parseFichajesFromResponse(response, username);
                 }
-            } catch (IOException e) {
-                Log.e("DatabaseHelper", "Error obteniendo los fichajes", e);
+                callback.onFichajesReceived(result);
             }
-            new Handler(Looper.getMainLooper()).post(() -> callback.onFichajesReceived(new ArrayList<>()));
         });
     }
 
     public void actualizarFichaje(Fichaje fichaje, BooleanCallback callback) {
-        executorService.execute(() -> {
-            Map<String, Object> data = new HashMap<>();
-            data.put("action", "update");
-            data.put("id", fichaje.id);
-            data.put("hora_salida", fichaje.horaSalida != null ? fichaje.horaSalida : "");
-            data.put("latitud", fichaje.latitud);
-            data.put("longitud", fichaje.longitud);
-            data.put("username", fichaje.username);
+        Data inputData = new Data.Builder()
+                .putString("endpoint", "fichajes.php")
+                .putString("action", "update")
+                .putString("param_id", String.valueOf(fichaje.id))
+                .putString("param_hora_salida", fichaje.horaSalida != null ? fichaje.horaSalida : "")
+                .putString("param_latitud", String.valueOf(fichaje.latitud))
+                .putString("param_longitud", String.valueOf(fichaje.longitud))
+                .putString("param_username", fichaje.username)
+                .build();
 
-            try {
-                JsonObject response = ApiClient.getInstance().post("fichajes.php", data);
-                boolean success = response.get("success").getAsBoolean();
-                new Handler(Looper.getMainLooper()).post(() -> callback.onResult(success));
-            } catch (IOException e) {
-                Log.e("DatabaseHelper", "Error actualizando el fichaje", e);
-                new Handler(Looper.getMainLooper()).post(() -> callback.onResult(false));
+        executeWorker(inputData, new JsonCallback() {
+            @Override
+            public void onResponse(JsonObject response) {
+                boolean success = response != null && response.has("success") && response.get("success").getAsBoolean();
+                callback.onResult(success);
             }
         });
     }
 
     public void obtenerUltimoFichajeDelDia(String fecha, String username, FichajeCallback callback) {
-        executorService.execute(() -> {
-            Map<String, Object> data = new HashMap<>();
-            data.put("action", "get_last");
-            data.put("username", username);
-            data.put("fecha", fecha);
+        Data inputData = new Data.Builder()
+                .putString("endpoint", "fichajes.php")
+                .putString("action", "get_last")
+                .putString("param_username", username)
+                .putString("param_fecha", fecha)
+                .build();
 
-            try {
-                JsonObject jsonResponse = ApiClient.getInstance().post("fichajes.php", data);
-                if (jsonResponse.get("success").getAsBoolean() && jsonResponse.has("data")) {
-                    JsonObject fichajeJson = jsonResponse.getAsJsonObject("data");
-                    Fichaje fichaje = new Fichaje();
-                    fichaje.id = fichajeJson.has("id") ? fichajeJson.get("id").getAsInt() : 0;
-                    fichaje.fecha = fichajeJson.has("fecha") ? fichajeJson.get("fecha").getAsString() : "";
-                    fichaje.horaEntrada = fichajeJson.has("hora_entrada") ?
-                            (fichajeJson.get("hora_entrada").isJsonNull() ? null : fichajeJson.get("hora_entrada").getAsString()) : null;
-                    fichaje.horaSalida = fichajeJson.has("hora_salida") ?
-                            (fichajeJson.get("hora_salida").isJsonNull() ? null : fichajeJson.get("hora_salida").getAsString()) : null;
-                    fichaje.latitud = fichajeJson.has("latitud") ? fichajeJson.get("latitud").getAsDouble() : 0.0;
-                    fichaje.longitud = fichajeJson.has("longitud") ? fichajeJson.get("longitud").getAsDouble() : 0.0;
-                    fichaje.username = username;
-
-                    new Handler(Looper.getMainLooper()).post(() -> callback.onFichajeReceived(fichaje));
-                    return;
+        executeWorker(inputData, new JsonCallback() {
+            @Override
+            public void onResponse(JsonObject response) {
+                Fichaje fichaje = null;
+                if (response != null && response.has("success") && response.get("success").getAsBoolean() && response.has("data")) {
+                    JsonObject fichajeJson = response.getAsJsonObject("data");
+                    fichaje = parseFichajeFromJson(fichajeJson, username);
                 }
-            } catch (IOException e) {
-                Log.e("DatabaseHelper", "Error obteniendo el último fichaje", e);
+                callback.onFichajeReceived(fichaje);
             }
-            new Handler(Looper.getMainLooper()).post(() -> callback.onFichajeReceived(null));
         });
     }
 
     public void obtenerFichajesDeHoy(String username, FichajesCallback callback) {
-        executorService.execute(() -> {
-            String fechaActual = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
+        String fechaActual = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
 
-            Map<String, Object> data = new HashMap<>();
-            data.put("action", "get_today");
-            data.put("username", username);
-            data.put("fecha", fechaActual);
+        Data inputData = new Data.Builder()
+                .putString("endpoint", "fichajes.php")
+                .putString("action", "get_today")
+                .putString("param_username", username)
+                .putString("param_fecha", fechaActual)
+                .build();
 
-            try {
-                JsonObject jsonResponse = ApiClient.getInstance().post("fichajes.php", data);
-                if (jsonResponse.get("success").getAsBoolean() && jsonResponse.has("data")) {
-                    List<Fichaje> result = new ArrayList<>();
-
-                    for (JsonElement element : jsonResponse.getAsJsonArray("data")) {
-                        JsonObject obj = element.getAsJsonObject();
-                        Fichaje fichaje = new Fichaje();
-                        fichaje.id = obj.has("id") ? obj.get("id").getAsInt() : 0;
-                        fichaje.fecha = obj.has("fecha") ? obj.get("fecha").getAsString() : "";
-                        fichaje.horaEntrada = obj.has("hora_entrada") ?
-                                (obj.get("hora_entrada").isJsonNull() ? null : obj.get("hora_entrada").getAsString()) : null;
-                        fichaje.horaSalida = obj.has("hora_salida") ?
-                                (obj.get("hora_salida").isJsonNull() ? null : obj.get("hora_salida").getAsString()) : null;
-                        fichaje.latitud = obj.has("latitud") ? obj.get("latitud").getAsDouble() : 0.0;
-                        fichaje.longitud = obj.has("longitud") ? obj.get("longitud").getAsDouble() : 0.0;
-                        fichaje.username = username;
-
-                        result.add(fichaje);
-                    }
-
-                    new Handler(Looper.getMainLooper()).post(() -> callback.onFichajesReceived(result));
-                    return;
+        executeWorker(inputData, new JsonCallback() {
+            @Override
+            public void onResponse(JsonObject response) {
+                List<Fichaje> result = new ArrayList<>();
+                if (response != null && response.has("success") && response.get("success").getAsBoolean() && response.has("data")) {
+                    result = parseFichajesFromResponse(response, username);
                 }
-            } catch (IOException e) {
-                Log.e("DatabaseHelper", "Error obteniendo los fichajes del día", e);
+                callback.onFichajesReceived(result);
             }
-            new Handler(Looper.getMainLooper()).post(() -> callback.onFichajesReceived(new ArrayList<>()));
         });
     }
 
     public void saveSettings(float weeklyHours, int workingDays, BooleanCallback callback) {
-        executorService.execute(() -> {
-            Map<String, Object> data = new HashMap<>();
-            data.put("action", "save");
-            data.put("weekly_hours", weeklyHours);
-            data.put("working_days", workingDays);
+        Data inputData = new Data.Builder()
+                .putString("endpoint", "settings.php")
+                .putString("action", "save")
+                .putString("param_weekly_hours", String.valueOf(weeklyHours))
+                .putString("param_working_days", String.valueOf(workingDays))
+                .build();
 
-            try {
-                JsonObject response = ApiClient.getInstance().post("settings.php", data);
-                boolean success = response.get("success").getAsBoolean();
-                new Handler(Looper.getMainLooper()).post(() -> callback.onResult(success));
-            } catch (IOException e) {
-                Log.e("DatabaseHelper", "Error guardando la configuración", e);
-                new Handler(Looper.getMainLooper()).post(() -> callback.onResult(false));
+        executeWorker(inputData, new JsonCallback() {
+            @Override
+            public void onResponse(JsonObject response) {
+                boolean success = response != null && response.has("success") && response.get("success").getAsBoolean();
+                callback.onResult(success);
             }
         });
     }
 
     public void getSettings(SettingsCallback callback) {
-        executorService.execute(() -> {
-            Map<String, Object> data = new HashMap<>();
-            data.put("action", "get");
+        Data inputData = new Data.Builder()
+                .putString("endpoint", "settings.php")
+                .putString("action", "get")
+                .build();
 
-            try {
-                JsonObject jsonResponse = ApiClient.getInstance().post("settings.php", data);
-                if (jsonResponse != null && jsonResponse.has("success") && jsonResponse.get("success").getAsBoolean()) {
-                    JsonObject dataObj = jsonResponse.has("data") ? jsonResponse.getAsJsonObject("data") : null;
-                    float weeklyHours = 40.0f;
-                    float workingDays = 5.0f;
-
-                    if (dataObj != null) {
-                        if (dataObj.has("weekly_hours") && !dataObj.get("weekly_hours").isJsonNull()) {
-                            weeklyHours = dataObj.get("weekly_hours").getAsFloat();
-                        }
-                        if (dataObj.has("working_days") && !dataObj.get("working_days").isJsonNull()) {
-                            workingDays = dataObj.get("working_days").getAsFloat();
-                        }
+        executeWorker(inputData, new JsonCallback() {
+            @Override
+            public void onResponse(JsonObject response) {
+                float[] settings = new float[]{40.0f, 5.0f};
+                if (response != null && response.has("success") && response.get("success").getAsBoolean() && response.has("data")) {
+                    JsonObject dataObj = response.getAsJsonObject("data");
+                    if (dataObj.has("weekly_hours") && !dataObj.get("weekly_hours").isJsonNull()) {
+                        settings[0] = dataObj.get("weekly_hours").getAsFloat();
                     }
-
-                    float[] settings = new float[]{weeklyHours, workingDays};
-                    new Handler(Looper.getMainLooper()).post(() -> callback.onSettingsReceived(settings));
-                    return;
+                    if (dataObj.has("working_days") && !dataObj.get("working_days").isJsonNull()) {
+                        settings[1] = dataObj.get("working_days").getAsFloat();
+                    }
                 }
-            } catch (Exception e) {
-                Log.e("DatabaseHelper", "Error obteniendo configuraciones", e);
+                callback.onSettingsReceived(settings);
             }
-            new Handler(Looper.getMainLooper()).post(() -> callback.onSettingsReceived(new float[]{40.0f, 5.0f}));
         });
     }
 
     public void deleteAllFichajes(String username, BooleanCallback callback) {
-        executorService.execute(() -> {
-            Map<String, Object> data = new HashMap<>();
-            data.put("action", "delete_all");
-            data.put("username", username);
+        Data inputData = new Data.Builder()
+                .putString("endpoint", "fichajes.php")
+                .putString("action", "delete_all")
+                .putString("param_username", username)
+                .build();
 
-            try {
-                JsonObject response = ApiClient.getInstance().post("fichajes.php", data);
-                boolean success = response.get("success").getAsBoolean();
-                new Handler(Looper.getMainLooper()).post(() -> callback.onResult(success));
-            } catch (IOException e) {
-                Log.e("DatabaseHelper", "Error eliminando fichajes", e);
-                new Handler(Looper.getMainLooper()).post(() -> callback.onResult(false));
+        executeWorker(inputData, new JsonCallback() {
+            @Override
+            public void onResponse(JsonObject response) {
+                boolean success = response != null && response.has("success") && response.get("success").getAsBoolean();
+                callback.onResult(success);
             }
         });
     }
 
     public void actualizarFichajeCompleto(Fichaje fichaje, BooleanCallback callback) {
-        executorService.execute(() -> {
-            Map<String, Object> data = new HashMap<>();
-            data.put("action", "update_complete");
-            data.put("id", fichaje.id);
-            data.put("hora_entrada", fichaje.horaEntrada);
-            data.put("hora_salida", fichaje.horaSalida != null ? fichaje.horaSalida : "");
-            data.put("latitud", fichaje.latitud);
-            data.put("longitud", fichaje.longitud);
-            data.put("username", fichaje.username);
+        Data inputData = new Data.Builder()
+                .putString("endpoint", "fichajes.php")
+                .putString("action", "update_complete")
+                .putString("param_id", String.valueOf(fichaje.id))
+                .putString("param_hora_entrada", fichaje.horaEntrada)
+                .putString("param_hora_salida", fichaje.horaSalida != null ? fichaje.horaSalida : "")
+                .putString("param_latitud", String.valueOf(fichaje.latitud))
+                .putString("param_longitud", String.valueOf(fichaje.longitud))
+                .putString("param_username", fichaje.username)
+                .build();
 
-            try {
-                JsonObject response = ApiClient.getInstance().post("fichajes.php", data);
-                boolean success = response.get("success").getAsBoolean();
-                new Handler(Looper.getMainLooper()).post(() -> callback.onResult(success));
-            } catch (IOException e) {
-                Log.e("DatabaseHelper", "Error actualizando el fichaje completo", e);
-                new Handler(Looper.getMainLooper()).post(() -> callback.onResult(false));
+        executeWorker(inputData, new JsonCallback() {
+            @Override
+            public void onResponse(JsonObject response) {
+                boolean success = response != null && response.has("success") && response.get("success").getAsBoolean();
+                callback.onResult(success);
             }
         });
     }
 
-    public boolean validarUsuario(String username, String password) {
-        Map<String, Object> data = new HashMap<>();
-        data.put("username", username);
-        data.put("password", password);
+    public void validarUsuario(String username, String password, BooleanCallback callback) {
+        Data inputData = new Data.Builder()
+                .putString("endpoint", "auth_user.php")
+                .putString("param_username", username)
+                .putString("param_password", password)
+                .build();
 
-        try {
-            String response = String.valueOf(ApiClient.getInstance().post("auth_user.php", data));
-            JsonObject jsonResponse = gson.fromJson(response, JsonObject.class);
-            return jsonResponse.get("success").getAsBoolean();
-        } catch (IOException e) {
-            Log.e("DatabaseHelper", "Error validando el usuario", e);
-            return false;
-        }
-    }
-
-    public String getCurrentUsername(Context context) {
-        SharedPreferences sharedPreferences = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE);
-        return sharedPreferences.getString("usuario_actual", "unknown_user");
+        executeWorker(inputData, new JsonCallback() {
+            @Override
+            public void onResponse(JsonObject response) {
+                boolean success = response != null && response.has("success") && response.get("success").getAsBoolean();
+                callback.onResult(success);
+            }
+        });
     }
 
     public void userExists(String username, BooleanCallback callback) {
-        executorService.execute(() -> {
-            Map<String, Object> data = new HashMap<>();
-            data.put("action", "check_user");
-            data.put("username", username);
+        Data inputData = new Data.Builder()
+                .putString("endpoint", "users.php")
+                .putString("action", "check_user")
+                .putString("param_username", username)
+                .build();
 
-            try {
-                String response = String.valueOf(ApiClient.getInstance().post("users.php", data));
-                JsonObject jsonResponse = gson.fromJson(response, JsonObject.class);
-                boolean exists = jsonResponse.getAsJsonObject("data").get("exists").getAsBoolean();
-                new Handler(Looper.getMainLooper()).post(() -> callback.onResult(exists));
-            } catch (IOException e) {
-                Log.e("DatabaseHelper", "Error comprobando si el usuario existe", e);
-                new Handler(Looper.getMainLooper()).post(() -> callback.onResult(false));
+        executeWorker(inputData, new JsonCallback() {
+            @Override
+            public void onResponse(JsonObject response) {
+                boolean exists = false;
+                if (response != null && response.has("success") && response.get("success").getAsBoolean() &&
+                        response.has("data") && response.getAsJsonObject("data").has("exists")) {
+                    exists = response.getAsJsonObject("data").get("exists").getAsBoolean();
+                }
+                callback.onResult(exists);
             }
         });
     }
 
-    public boolean addUser(String username, String password) {
-        Map<String, Object> data = new HashMap<>();
-        data.put("action", "add_user");
-        data.put("username", username);
-        data.put("password", password);
+    public void addUser(String username, String password, BooleanCallback callback) {
+        Data inputData = new Data.Builder()
+                .putString("endpoint", "users.php")
+                .putString("action", "add_user")
+                .putString("param_username", username)
+                .putString("param_password", password)
+                .build();
 
-        try {
-            String response = String.valueOf(ApiClient.getInstance().post("users.php", data));
-            JsonObject jsonResponse = gson.fromJson(response, JsonObject.class);
-            return jsonResponse.get("success").getAsBoolean();
-        } catch (IOException e) {
-            Log.e("DatabaseHelper", "Error añadiendo el usuario", e);
-            return false;
-        }
+        executeWorker(inputData, new JsonCallback() {
+            @Override
+            public void onResponse(JsonObject response) {
+                boolean success = response != null && response.has("success") && response.get("success").getAsBoolean();
+                callback.onResult(success);
+            }
+        });
     }
 
     public void getProfile(String username, ProfileCallback callback) {
-        executorService.execute(() -> {
-            Map<String, Object> data = new HashMap<>();
-            data.put("action", "get_profile");
-            data.put("username", username);
+        Data inputData = new Data.Builder()
+                .putString("endpoint", "profile.php")
+                .putString("action", "get_profile")
+                .putString("param_username", username)
+                .build();
 
-            try {
-                JsonObject jsonResponse = ApiClient.getInstance().post("profile.php", data);
-                if (jsonResponse != null && jsonResponse.has("success") && jsonResponse.get("success").getAsBoolean()) {
-                    JsonObject profileData = jsonResponse.getAsJsonObject("data");
-                    UserProfile profile = new UserProfile();
+        executeWorker(inputData, new JsonCallback() {
+            @Override
+            public void onResponse(JsonObject response) {
+                UserProfile profile = null;
+                if (response != null && response.has("success") && response.get("success").getAsBoolean() && response.has("data")) {
+                    JsonObject profileData = response.getAsJsonObject("data");
+                    profile = new UserProfile();
                     profile.username = username;
 
                     if (profileData.has("name") && !profileData.get("name").isJsonNull()) {
@@ -381,78 +327,124 @@ public class DatabaseHelper {
                     if (profileData.has("email") && !profileData.get("email").isJsonNull()) {
                         profile.email = profileData.get("email").getAsString();
                     }
-                    // Cargar la foto de perfil
                     if (profileData.has("profile_photo") && !profileData.get("profile_photo").isJsonNull()) {
                         profile.profilePhoto = profileData.get("profile_photo").getAsString();
                     }
-
-                    new Handler(Looper.getMainLooper()).post(() -> callback.onProfileReceived(profile));
-                    return;
                 }
-            } catch (Exception e) {
-                Log.e("DatabaseHelper", "Error al obtener el perfil del usuario", e);
+                callback.onProfileReceived(profile);
             }
-            new Handler(Looper.getMainLooper()).post(() -> callback.onProfileReceived(null));
         });
     }
 
     public void updateProfile(UserProfile profile, BooleanCallback callback) {
-        executorService.execute(() -> {
-            Map<String, Object> data = new HashMap<>();
-            data.put("action", "update_profile");
-            data.put("username", profile.username);
-            data.put("name", profile.name != null ? profile.name : "");
-            data.put("surname", profile.surname != null ? profile.surname : "");
-            data.put("birthdate", profile.birthdate != null ? profile.birthdate : "");
-            data.put("email", profile.email != null ? profile.email : "");
-            data.put("profile_photo", profile.profilePhoto != null ? profile.profilePhoto : "");
+        Data inputData = new Data.Builder()
+                .putString("endpoint", "profile.php")
+                .putString("action", "update_profile")
+                .putString("param_username", profile.username)
+                .putString("param_name", profile.name != null ? profile.name : "")
+                .putString("param_surname", profile.surname != null ? profile.surname : "")
+                .putString("param_birthdate", profile.birthdate != null ? profile.birthdate : "")
+                .putString("param_email", profile.email != null ? profile.email : "")
+                .putString("param_profile_photo", profile.profilePhoto != null ? profile.profilePhoto : "")
+                .build();
 
-            try {
-                JsonObject response = ApiClient.getInstance().post("profile.php", data);
-                boolean success = response.get("success").getAsBoolean();
-                new Handler(Looper.getMainLooper()).post(() -> callback.onResult(success));
-            } catch (IOException e) {
-                Log.e("DatabaseHelper", "Error al actualizar el perfil del usuario", e);
-                new Handler(Looper.getMainLooper()).post(() -> callback.onResult(false));
+        executeWorker(inputData, new JsonCallback() {
+            @Override
+            public void onResponse(JsonObject response) {
+                boolean success = response != null && response.has("success") && response.get("success").getAsBoolean();
+                callback.onResult(success);
             }
         });
     }
 
     public void obtenerFichajePorId(int fichajeId, String username, FichajeCallback callback) {
-        executorService.execute(() -> {
-            Map<String, Object> data = new HashMap<>();
-            data.put("action", "get_by_id");
-            data.put("id", fichajeId);
-            data.put("username", username);
+        Data inputData = new Data.Builder()
+                .putString("endpoint", "fichajes.php")
+                .putString("action", "get_by_id")
+                .putString("param_id", String.valueOf(fichajeId))
+                .putString("param_username", username)
+                .build();
 
-            try {
-                JsonObject jsonResponse = ApiClient.getInstance().post("fichajes.php", data);
-                if (jsonResponse != null && jsonResponse.has("success") && jsonResponse.get("success").getAsBoolean()) {
-                    if (jsonResponse.has("data")) {
-                        JsonObject fichajeJson = jsonResponse.getAsJsonObject("data");
-                        Fichaje fichaje = new Fichaje();
-                        fichaje.id = fichajeJson.has("id") ? fichajeJson.get("id").getAsInt() : 0;
-                        fichaje.fecha = fichajeJson.has("fecha") ? fichajeJson.get("fecha").getAsString() : "";
-                        fichaje.horaEntrada = fichajeJson.has("hora_entrada") ?
-                                (fichajeJson.get("hora_entrada").isJsonNull() ? null : fichajeJson.get("hora_entrada").getAsString()) : null;
-                        fichaje.horaSalida = fichajeJson.has("hora_salida") ?
-                                (fichajeJson.get("hora_salida").isJsonNull() ? null : fichajeJson.get("hora_salida").getAsString()) : null;
-                        fichaje.latitud = fichajeJson.has("latitud") ? fichajeJson.get("latitud").getAsDouble() : 0.0;
-                        fichaje.longitud = fichajeJson.has("longitud") ? fichajeJson.get("longitud").getAsDouble() : 0.0;
-                        fichaje.username = username;
-
-                        new Handler(Looper.getMainLooper()).post(() -> callback.onFichajeReceived(fichaje));
-                        return;
-                    }
+        executeWorker(inputData, new JsonCallback() {
+            @Override
+            public void onResponse(JsonObject response) {
+                Fichaje fichaje = null;
+                if (response != null && response.has("success") && response.get("success").getAsBoolean() && response.has("data")) {
+                    JsonObject fichajeJson = response.getAsJsonObject("data");
+                    fichaje = parseFichajeFromJson(fichajeJson, username);
                 }
-            } catch (IOException e) {
-                Log.e("DatabaseHelper", "Error obteniendo el fichaje por ID", e);
+                callback.onFichajeReceived(fichaje);
             }
-            new Handler(Looper.getMainLooper()).post(() -> callback.onFichajeReceived(null));
         });
     }
 
-    public interface ProfileCallback {
-        void onProfileReceived(UserProfile profile);
+    // Métodos auxiliares
+
+    private void executeWorker(Data inputData, JsonCallback callback) {
+        OneTimeWorkRequest workRequest = new OneTimeWorkRequest.Builder(DatabaseWorker.class)
+                .setInputData(inputData)
+                .build();
+
+        android.os.Handler mainHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+        mainHandler.post(() -> {
+            final androidx.lifecycle.Observer<WorkInfo> observer = new androidx.lifecycle.Observer<WorkInfo>() {
+                @Override
+                public void onChanged(WorkInfo workInfo) {
+                    if (workInfo != null && workInfo.getState().isFinished()) {
+                        if (workInfo.getState() == WorkInfo.State.SUCCEEDED) {
+                            Data outputData = workInfo.getOutputData();
+                            String responseStr = outputData.getString("response");
+                            try {
+                                JsonObject response = gson.fromJson(responseStr, JsonObject.class);
+                                callback.onResponse(response);
+                            } catch (Exception e) {
+                                Log.e("DatabaseHelper", "Error parsing response", e);
+                                callback.onResponse(null);
+                            }
+                        } else {
+                            callback.onResponse(null);
+                        }
+                        workManager.getWorkInfoByIdLiveData(workRequest.getId()).removeObserver(this);
+                    }
+                }
+            };
+
+            workManager.getWorkInfoByIdLiveData(workRequest.getId())
+                    .observeForever(observer);
+
+            workManager.enqueue(workRequest);
+        });
+    }
+
+    private List<Fichaje> parseFichajesFromResponse(JsonObject response, String username) {
+        List<Fichaje> result = new ArrayList<>();
+        if (response.has("data")) {
+            JsonArray dataArray = response.getAsJsonArray("data");
+            for (JsonElement element : dataArray) {
+                JsonObject obj = element.getAsJsonObject();
+                Fichaje fichaje = parseFichajeFromJson(obj, username);
+                result.add(fichaje);
+            }
+        }
+        return result;
+    }
+
+    private Fichaje parseFichajeFromJson(JsonObject obj, String username) {
+        Fichaje fichaje = new Fichaje();
+        fichaje.id = obj.has("id") ? obj.get("id").getAsInt() : 0;
+        fichaje.fecha = obj.has("fecha") ? obj.get("fecha").getAsString() : "";
+        fichaje.horaEntrada = obj.has("hora_entrada") ?
+                (obj.get("hora_entrada").isJsonNull() ? null : obj.get("hora_entrada").getAsString()) : null;
+        fichaje.horaSalida = obj.has("hora_salida") ?
+                (obj.get("hora_salida").isJsonNull() ? null : obj.get("hora_salida").getAsString()) : null;
+        fichaje.latitud = obj.has("latitud") ? obj.get("latitud").getAsDouble() : 0.0;
+        fichaje.longitud = obj.has("longitud") ? obj.get("longitud").getAsDouble() : 0.0;
+        fichaje.username = username;
+        return fichaje;
+    }
+
+    public String getCurrentUsername(Context context) {
+        SharedPreferences sharedPreferences = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE);
+        return sharedPreferences.getString("usuario_actual", "unknown_user");
     }
 }

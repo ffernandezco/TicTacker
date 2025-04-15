@@ -117,7 +117,7 @@ public class SettingsFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        dbHelper.close();
+        //dbHelper.close();
     }
 
     private void initializeViews(View view) {

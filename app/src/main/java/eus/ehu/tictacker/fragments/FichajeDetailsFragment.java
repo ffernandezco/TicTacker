@@ -130,8 +130,8 @@ public class FichajeDetailsFragment extends Fragment implements EditFichajeDialo
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        if (databaseHelper != null) {
-            databaseHelper.close();
-        }
+        //if (databaseHelper != null) {
+            //databaseHelper.close();
+        //}
     }
 }

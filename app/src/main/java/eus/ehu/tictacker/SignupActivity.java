@@ -44,34 +44,36 @@ public class SignupActivity extends AppCompatActivity {
             if (validateInputs(username, password, confirmPassword)) {
                 buttonSignup.setEnabled(false);
 
-                executorService.execute(() -> {
-                    final boolean success = dbHelper.addUser(username, password);
-                    runOnUiThread(() -> {
-                        buttonSignup.setEnabled(true);
-                        if (success) {
-                            Toast.makeText(SignupActivity.this, getString(R.string.registro_exitoso), Toast.LENGTH_SHORT).show();
-                            SharedPreferences sharedPreferences = getSharedPreferences("app_prefs", MODE_PRIVATE);
-                            sharedPreferences.edit().putString("usuario_actual", username).apply();
+                // Remove the executor here - the DatabaseHelper already handles threading
+                dbHelper.addUser(username, password, new DatabaseHelper.BooleanCallback() {
+                    @Override
+                    public void onResult(boolean success) {
+                        runOnUiThread(() -> {
+                            buttonSignup.setEnabled(true);
+                            if (success) {
+                                Toast.makeText(SignupActivity.this, getString(R.string.registro_exitoso), Toast.LENGTH_SHORT).show();
+                                SharedPreferences sharedPreferences = getSharedPreferences("app_prefs", MODE_PRIVATE);
+                                sharedPreferences.edit().putString("usuario_actual", username).apply();
 
-                            // Dialog para ompletar perfil
-                            new AlertDialog.Builder(SignupActivity.this)
-                                    .setTitle(R.string.complete_profile)
-                                    .setMessage(R.string.complete_profile_prompt)
-                                    .setPositiveButton(R.string.now, (dialog, which) -> {
-                                        Intent intent = new Intent(SignupActivity.this, MainActivity.class);
-                                        intent.putExtra("openProfile", true);
-                                        startActivity(intent);
-                                        finish();
-                                    })
-                                    .setNegativeButton(R.string.later, (dialog, which) -> {
-                                        startActivity(new Intent(SignupActivity.this, MainActivity.class));
-                                        finish();
-                                    })
-                                    .show();
-                        } else {
-                            Toast.makeText(SignupActivity.this, getString(R.string.el_nombre_de_usuario_ya_existe), Toast.LENGTH_SHORT).show();
-                        }
-                    });
+                                new AlertDialog.Builder(SignupActivity.this)
+                                        .setTitle(R.string.complete_profile)
+                                        .setMessage(R.string.complete_profile_prompt)
+                                        .setPositiveButton(R.string.now, (dialog, which) -> {
+                                            Intent intent = new Intent(SignupActivity.this, MainActivity.class);
+                                            intent.putExtra("openProfile", true);
+                                            startActivity(intent);
+                                            finish();
+                                        })
+                                        .setNegativeButton(R.string.later, (dialog, which) -> {
+                                            startActivity(new Intent(SignupActivity.this, MainActivity.class));
+                                            finish();
+                                        })
+                                        .show();
+                            } else {
+                                Toast.makeText(SignupActivity.this, getString(R.string.el_nombre_de_usuario_ya_existe), Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    }
                 });
             }
         });
