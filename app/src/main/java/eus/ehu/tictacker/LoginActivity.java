@@ -19,11 +19,13 @@ public class LoginActivity extends AppCompatActivity {
     private DatabaseHelper dbHelper;
     private SharedPreferences sharedPreferences;
     private TextView textViewSignupLink;
+    private NetworkConnectivityChecker connectivityChecker;
     //private ExecutorService executorService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        connectivityChecker = NetworkConnectivityChecker.getInstance(this);
         setContentView(R.layout.activity_login);
 
         dbHelper = new DatabaseHelper(this);
@@ -46,6 +48,15 @@ public class LoginActivity extends AppCompatActivity {
             String password = editTextPassword.getText().toString();
 
             buttonLogin.setEnabled(false);
+
+            // Comprobar si se cuenta con conexión a Internet
+            if (!connectivityChecker.isConnected()) {
+                Intent intent = new Intent(LoginActivity.this, NoInternetActivity.class);
+                intent.putExtra("return_activity", LoginActivity.class.getName());
+                startActivity(intent);
+                return;
+            }
+
             dbHelper.validarUsuario(username, password, new DatabaseHelper.BooleanCallback() {
                 @Override
                 public void onResult(boolean isValid) {
@@ -64,11 +75,45 @@ public class LoginActivity extends AppCompatActivity {
         });
     }
 
+    private void checkNetworkConnection() {
+        connectivityChecker.setNetworkStateListener(new NetworkConnectivityChecker.NetworkStateListener() {
+            @Override
+            public void onNetworkStateChanged(boolean isConnected) {
+                if (!isConnected) {
+                    Intent intent = new Intent(LoginActivity.this, NoInternetActivity.class);
+                    intent.putExtra("return_activity", LoginActivity.class.getName());
+                    startActivity(intent);
+                }
+            }
+        });
+        connectivityChecker.register();
+
+        // Comprobación inicial
+        if (!connectivityChecker.isConnected()) {
+            Intent intent = new Intent(this, NoInternetActivity.class);
+            intent.putExtra("return_activity", LoginActivity.class.getName());
+            startActivity(intent);
+        }
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
         //if (executorService != null) {
             //executorService.shutdown();
         //}
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        checkNetworkConnection();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        connectivityChecker.setNetworkStateListener(null);
+        connectivityChecker.unregister();
     }
 }

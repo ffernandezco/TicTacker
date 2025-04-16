@@ -71,6 +71,8 @@ public class MainActivity extends AppCompatActivity {
             startActivity(new Intent(this, LoginActivity.class));
             finish();
             return;
+        } else {
+            checkNetworkConnection();
         }
 
         setContentView(R.layout.activity_main);
@@ -266,8 +268,44 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void checkNetworkConnection() {
+        NetworkConnectivityChecker connectivityChecker = NetworkConnectivityChecker.getInstance(this);
+        connectivityChecker.setNetworkStateListener(new NetworkConnectivityChecker.NetworkStateListener() {
+            @Override
+            public void onNetworkStateChanged(boolean isConnected) {
+                if (!isConnected) {
+                    Intent intent = new Intent(MainActivity.this, NoInternetActivity.class);
+                    intent.putExtra("return_activity", MainActivity.class.getName());
+                    startActivity(intent);
+                }
+            }
+        });
+        connectivityChecker.register();
+
+        // Comprobación inicial
+        if (!connectivityChecker.isConnected()) {
+            Intent intent = new Intent(this, NoInternetActivity.class);
+            intent.putExtra("return_activity", MainActivity.class.getName());
+            startActivity(intent);
+        }
+    }
+
     public void setSelectedMenuItem(int menuItemId) {
         NavigationView navigationView = findViewById(R.id.nav_view);
         navigationView.setCheckedItem(menuItemId);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        checkNetworkConnection();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        NetworkConnectivityChecker connectivityChecker = NetworkConnectivityChecker.getInstance(this);
+        connectivityChecker.setNetworkStateListener(null);
+        connectivityChecker.unregister();
     }
 }

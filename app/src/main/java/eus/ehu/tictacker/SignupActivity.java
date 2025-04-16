@@ -20,11 +20,15 @@ public class SignupActivity extends AppCompatActivity {
     private Button buttonSignup;
     private TextView textViewLoginLink;
     private DatabaseHelper dbHelper;
+    private NetworkConnectivityChecker connectivityChecker;
     private ExecutorService executorService;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        connectivityChecker = NetworkConnectivityChecker.getInstance(this);
+
         setContentView(R.layout.activity_signup);
 
         dbHelper = new DatabaseHelper(this);
@@ -40,6 +44,13 @@ public class SignupActivity extends AppCompatActivity {
             String username = editTextUsername.getText().toString().trim();
             String password = editTextPassword.getText().toString().trim();
             String confirmPassword = editTextConfirmPassword.getText().toString().trim();
+
+            if (!connectivityChecker.isConnected()) {
+                Intent intent = new Intent(SignupActivity.this, NoInternetActivity.class);
+                intent.putExtra("return_activity", SignupActivity.class.getName());
+                startActivity(intent);
+                return;
+            }
 
             if (validateInputs(username, password, confirmPassword)) {
                 buttonSignup.setEnabled(false);
@@ -90,6 +101,40 @@ public class SignupActivity extends AppCompatActivity {
         super.onDestroy();
         if (executorService != null) {
             executorService.shutdown();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        checkNetworkConnection();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        connectivityChecker.setNetworkStateListener(null);
+        connectivityChecker.unregister();
+    }
+
+    private void checkNetworkConnection() {
+        connectivityChecker.setNetworkStateListener(new NetworkConnectivityChecker.NetworkStateListener() {
+            @Override
+            public void onNetworkStateChanged(boolean isConnected) {
+                if (!isConnected) {
+                    Intent intent = new Intent(SignupActivity.this, NoInternetActivity.class);
+                    intent.putExtra("return_activity", SignupActivity.class.getName());
+                    startActivity(intent);
+                }
+            }
+        });
+        connectivityChecker.register();
+
+        // Comprobación inicial
+        if (!connectivityChecker.isConnected()) {
+            Intent intent = new Intent(this, NoInternetActivity.class);
+            intent.putExtra("return_activity", SignupActivity.class.getName());
+            startActivity(intent);
         }
     }
 

@@ -123,4 +123,8 @@
     <string name="error_creating_image_file">Error al crear la foto de perfil</string>
     <string name="change_photo">Cambiar foto</string>
     <string name="hello_user">¡Hola, %1$s!</string>
+    <string name="no_internet_icon">No internet icon</string>
+    <string name="no_internet_title">No Internet Connection</string>
+    <string name="no_internet_message">Please check your internet connection and try again</string>
+    <string name="retry_connection">Retry</string>
 </resources>
