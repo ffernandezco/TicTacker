@@ -2,6 +2,7 @@ package eus.ehu.tictacker.fragments;
 
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -12,8 +13,15 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.navigation.Navigation;
+
+import org.osmdroid.api.IMapController;
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
+import org.osmdroid.util.GeoPoint;
+import org.osmdroid.views.MapView;
+import org.osmdroid.views.overlay.Marker;
 
 import eus.ehu.tictacker.DatabaseHelper;
 import eus.ehu.tictacker.EditFichajeDialog;
@@ -27,6 +35,7 @@ public class FichajeDetailsFragment extends Fragment implements EditFichajeDialo
     private DatabaseHelper databaseHelper;
     private TextView tvFecha, tvEntrada, tvSalida, tvLocation;
     private Button btnVerMapa, btnEditar;
+    private MapView mapView;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -67,6 +76,10 @@ public class FichajeDetailsFragment extends Fragment implements EditFichajeDialo
         tvLocation = view.findViewById(R.id.tvDetailLocation);
         btnVerMapa = view.findViewById(R.id.btnVerMapa);
         btnEditar = view.findViewById(R.id.btnEditar);
+        mapView = view.findViewById(R.id.mapView);
+
+        // Inicializar el mapView
+        configureMapView();
 
         // Configurar listeners para botones
         btnVerMapa.setOnClickListener(v -> openMap());
@@ -74,6 +87,15 @@ public class FichajeDetailsFragment extends Fragment implements EditFichajeDialo
 
         if (fichaje != null) {
             updateUI();
+        }
+    }
+
+    private void configureMapView() {
+        if (mapView != null) {
+            mapView.setTileSource(TileSourceFactory.MAPNIK);
+            mapView.setMultiTouchControls(true);
+            IMapController mapController = mapView.getController();
+            mapController.setZoom(16.0);
         }
     }
 
@@ -91,9 +113,35 @@ public class FichajeDetailsFragment extends Fragment implements EditFichajeDialo
         if (fichaje.latitud == 0.0 && fichaje.longitud == 0.0) {
             tvLocation.setText(context.getString(R.string.ubicacion_no_disponible));
             btnVerMapa.setEnabled(false);
+            mapView.setVisibility(View.GONE); // Oculta el mapa en caso de que no haya ubicación para el fichaje
         } else {
             tvLocation.setText(context.getString(R.string.ubicacion, fichaje.latitud, fichaje.longitud));
             btnVerMapa.setEnabled(true);
+            mapView.setVisibility(View.VISIBLE);
+            updateMapWithLocation();
+        }
+    }
+
+    private void updateMapWithLocation() {
+        if (mapView != null && fichaje != null && (fichaje.latitud != 0.0 || fichaje.longitud != 0.0)) {
+            // Poner el mapa en la posición del fichaje
+            GeoPoint point = new GeoPoint(fichaje.latitud, fichaje.longitud);
+            IMapController mapController = mapView.getController();
+            mapController.setCenter(point);
+            mapController.setZoom(16.0);
+
+            // Añadir chincheta de posición en la ubicación del fichaje
+            mapView.getOverlays().clear();
+            Marker marker = new Marker(mapView);
+            marker.setPosition(point);
+            marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+            marker.setTitle(getString(R.string.ubicacion_fichaje));
+            Drawable icon = ContextCompat.getDrawable(requireContext(), org.osmdroid.library.R.drawable.osm_ic_follow_me_on);
+            if (icon != null) {
+                marker.setIcon(icon);
+            }
+            mapView.getOverlays().add(marker);
+            mapView.invalidate();
         }
     }
 
@@ -128,10 +176,26 @@ public class FichajeDetailsFragment extends Fragment implements EditFichajeDialo
     }
 
     @Override
+    public void onResume() {
+        super.onResume();
+        if (mapView != null) {
+            mapView.onResume();
+        }
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        if (mapView != null) {
+            mapView.onPause();
+        }
+    }
+
+    @Override
     public void onDestroyView() {
         super.onDestroyView();
-        //if (databaseHelper != null) {
-            //databaseHelper.close();
-        //}
+        if (mapView != null) {
+            mapView.onDetach();
+        }
     }
 }
