@@ -124,22 +124,19 @@ public class FichajeDetailsFragment extends Fragment implements EditFichajeDialo
 
     private void updateMapWithLocation() {
         if (mapView != null && fichaje != null && (fichaje.latitud != 0.0 || fichaje.longitud != 0.0)) {
-            // Poner el mapa en la posición del fichaje
+            // Poner el mapa en la ubicación del fichaje
             GeoPoint point = new GeoPoint(fichaje.latitud, fichaje.longitud);
             IMapController mapController = mapView.getController();
             mapController.setCenter(point);
             mapController.setZoom(16.0);
 
-            // Añadir chincheta de posición en la ubicación del fichaje
+            // Añadir chincheta de localización para el fichje
             mapView.getOverlays().clear();
             Marker marker = new Marker(mapView);
             marker.setPosition(point);
             marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
             marker.setTitle(getString(R.string.ubicacion_fichaje));
-            Drawable icon = ContextCompat.getDrawable(requireContext(), org.osmdroid.library.R.drawable.osm_ic_follow_me_on);
-            if (icon != null) {
-                marker.setIcon(icon);
-            }
+
             mapView.getOverlays().add(marker);
             mapView.invalidate();
         }
