@@ -338,13 +338,47 @@ public class ProfileFragment extends Fragment {
     }
 
     private String bitmapToBase64(Bitmap bitmap) {
-        // Reducir tamaño para evitar sobrecarga
-        Bitmap resizedBitmap = getResizedBitmap(bitmap, 500);
+        // Reducir tamaño a 250px para evitar restricciones de Base64
+        Bitmap resizedBitmap = getResizedBitmap(bitmap, 250);
 
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 80, byteArrayOutputStream);
-        byte[] byteArray = byteArrayOutputStream.toByteArray();
-        return Base64.encodeToString(byteArray, Base64.DEFAULT);
+
+        // Si es demasiado, se empieza hasta llegar a 9000 bytes
+        // Tener en cuenta que por restricción tiene que ser inferior a 10240 bytes en BD
+        int quality = 50; // Reducir calidad (50 %)
+        int maxSize = 9000;
+        boolean done = false;
+
+        while (!done) {
+            byteArrayOutputStream.reset(); // Eliminar intento anterior
+            resizedBitmap.compress(Bitmap.CompressFormat.JPEG, quality, byteArrayOutputStream);
+            byte[] byteArray = byteArrayOutputStream.toByteArray();
+
+            if (byteArray.length <= maxSize) {
+                // Encontrar tamaño aleatorio
+                return Base64.encodeToString(byteArray, Base64.DEFAULT);
+            }
+
+            // Casos extremos en los que debe reducirse drásticamente calidad
+            if (quality > 10) {
+                // Probar con la menor calidad de JPEG
+                quality -= 10;
+            } else {
+                // Si aún no ocupa menos, reducir dimensiones (aún más)
+                int newSize = (int)(resizedBitmap.getWidth() * 0.8f);
+                if (newSize < 50) {
+                    // Crear imagen en Base64 con reducción de dimensiones y calidad
+                    byteArrayOutputStream.reset();
+                    resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 10, byteArrayOutputStream);
+                    byte[] finalByteArray = byteArrayOutputStream.toByteArray();
+                    return Base64.encodeToString(finalByteArray, Base64.DEFAULT);
+                }
+                resizedBitmap = getResizedBitmap(bitmap, newSize);
+            }
+        }
+
+        // Nunca debería alcanzarse en principio
+        return "";
     }
 
     private Bitmap getResizedBitmap(Bitmap image, int maxSize) {
