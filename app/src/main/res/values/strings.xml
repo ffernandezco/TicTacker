@@ -127,4 +127,14 @@
     <string name="no_internet_title">No Internet Connection</string>
     <string name="no_internet_message">Please check your internet connection and try again</string>
     <string name="retry_connection">Retry</string>
+    <string name="change_password">Cambiar contraseña</string>
+    <string name="current_password">Contraseña actual</string>
+    <string name="new_password">Nueva contraseña</string>
+    <string name="confirm_new_password">Confirmar nueva contraseña</string>
+    <string name="update_password">Actualizar contraseña</string>
+    <string name="password_changed">Contraseña actualizada con éxito</string>
+    <string name="password_change_error">Error al cambiar la contraseña</string>
+    <string name="current_password_incorrect">La contraseña actual es incorrecta</string>
+    <string name="passwords_dont_match">Las contraseñas nuevas no coinciden</string>
+    <string name="password_too_short">La contraseña debe tener al menos 4 caracteres</string>
 </resources>

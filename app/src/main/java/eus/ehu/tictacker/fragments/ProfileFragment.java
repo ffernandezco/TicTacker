@@ -62,6 +62,8 @@ public class ProfileFragment extends Fragment {
     private FloatingActionButton fabChangePhoto;
     private Uri currentPhotoUri;
     private String base64Image;
+    private TextInputEditText editTextCurrentPassword, editTextNewPassword, editTextConfirmNewPassword;
+    private MaterialButton buttonChangePassword;
     private static final int REQUEST_IMAGE_CAPTURE = 1;
     private static final int REQUEST_PICK_IMAGE = 2;
 
@@ -102,6 +104,13 @@ public class ProfileFragment extends Fragment {
         registerImagePickerLaunchers();
 
         fabChangePhoto.setOnClickListener(v -> showImagePickerOptions());
+
+        editTextCurrentPassword = view.findViewById(R.id.editTextCurrentPassword);
+        editTextNewPassword = view.findViewById(R.id.editTextNewPassword);
+        editTextConfirmNewPassword = view.findViewById(R.id.editTextConfirmNewPassword);
+        buttonChangePassword = view.findViewById(R.id.buttonChangePassword);
+
+        buttonChangePassword.setOnClickListener(v -> changePassword());
 
         loadProfileData();
 
@@ -351,6 +360,60 @@ public class ProfileFragment extends Fragment {
             width = (int) (height * bitmapRatio);
         }
         return Bitmap.createScaledBitmap(image, width, height, true);
+    }
+
+    private void changePassword() {
+        String currentPassword = editTextCurrentPassword.getText().toString().trim();
+        String newPassword = editTextNewPassword.getText().toString().trim();
+        String confirmNewPassword = editTextConfirmNewPassword.getText().toString().trim();
+
+        // Validar la nueva contraseña
+        if (currentPassword.isEmpty() || newPassword.isEmpty() || confirmNewPassword.isEmpty()) {
+            Toast.makeText(requireContext(), R.string.all_fields_required, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (newPassword.length() < 4) {
+            editTextNewPassword.setError(getString(R.string.password_too_short));
+            return;
+        }
+
+        if (!newPassword.equals(confirmNewPassword)) {
+            editTextConfirmNewPassword.setError(getString(R.string.passwords_dont_match));
+            return;
+        }
+
+        // Comprobar contraseña original
+        dbHelper.validateCurrentPassword(username, currentPassword, new DatabaseHelper.BooleanCallback() {
+            @Override
+            public void onResult(boolean passwordCorrect) {
+                if (!passwordCorrect) {
+                    requireActivity().runOnUiThread(() -> {
+                        editTextCurrentPassword.setError(getString(R.string.current_password_incorrect));
+                    });
+                    return;
+                }
+
+                // Actualizar la contraseña
+                dbHelper.updateUserPassword(username, newPassword, new DatabaseHelper.BooleanCallback() {
+                    @Override
+                    public void onResult(boolean success) {
+                        requireActivity().runOnUiThread(() -> {
+                            if (success) {
+                                Toast.makeText(requireContext(), R.string.password_changed, Toast.LENGTH_SHORT).show();
+
+                                // Limpiar los campos por seguridad
+                                editTextCurrentPassword.setText("");
+                                editTextNewPassword.setText("");
+                                editTextConfirmNewPassword.setText("");
+                            } else {
+                                Toast.makeText(requireContext(), R.string.password_change_error, Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    }
+                });
+            }
+        });
     }
 
     private void logoutUser() {

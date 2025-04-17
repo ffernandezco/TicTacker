@@ -25,6 +25,13 @@ if ($action == 'check_user') {
     $stmt->bind_param("ss", $data['username'], $password);
     $response["success"] = $stmt->execute();
     $stmt->close();
+} elseif ($action == 'update_password') {
+    $query = "UPDATE users SET password = ? WHERE username = ?";
+    $stmt = $con->prepare($query);
+    $password = password_hash($data['password'], PASSWORD_DEFAULT);
+    $stmt->bind_param("ss", $password, $data['username']);
+    $response["success"] = $stmt->execute();
+    $stmt->close();
 }
 
 echo json_encode($response);

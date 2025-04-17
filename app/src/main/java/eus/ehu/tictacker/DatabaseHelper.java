@@ -378,8 +378,40 @@ public class DatabaseHelper {
         });
     }
 
-    // Métodos auxiliares
+    public void validateCurrentPassword(String username, String password, BooleanCallback callback) {
+        Data inputData = new Data.Builder()
+                .putString("endpoint", "auth_user.php")
+                .putString("param_username", username)
+                .putString("param_password", password)
+                .build();
 
+        executeWorker(inputData, new JsonCallback() {
+            @Override
+            public void onResponse(JsonObject response) {
+                boolean isValid = response != null && response.has("success") && response.get("success").getAsBoolean();
+                callback.onResult(isValid);
+            }
+        });
+    }
+
+    public void updateUserPassword(String username, String newPassword, BooleanCallback callback) {
+        Data inputData = new Data.Builder()
+                .putString("endpoint", "users.php")
+                .putString("action", "update_password")
+                .putString("param_username", username)
+                .putString("param_password", newPassword)
+                .build();
+
+        executeWorker(inputData, new JsonCallback() {
+            @Override
+            public void onResponse(JsonObject response) {
+                boolean success = response != null && response.has("success") && response.get("success").getAsBoolean();
+                callback.onResult(success);
+            }
+        });
+    }
+
+    // Métodos auxiliares
     private void executeWorker(Data inputData, JsonCallback callback) {
         OneTimeWorkRequest workRequest = new OneTimeWorkRequest.Builder(DatabaseWorker.class)
                 .setInputData(inputData)
