@@ -137,4 +137,6 @@
     <string name="current_password_incorrect">La contraseña actual es incorrecta</string>
     <string name="passwords_dont_match">Las contraseñas nuevas no coinciden</string>
     <string name="password_too_short">La contraseña debe tener al menos 4 caracteres</string>
+    <string name="not_logged_in">Not logged in</string>
+    <string name="open_app">Open app</string>
 </resources>

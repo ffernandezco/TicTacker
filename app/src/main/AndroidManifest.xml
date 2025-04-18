@@ -69,6 +69,22 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+        <receiver android:name=".widgets.TicTackerWidget"
+            android:exported="true"
+            android:label="TicTacker">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="eus.ehu.tictacker.UPDATE_WIDGET" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="eus.ehu.tictacker.CLOCK_IN_OUT" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/tictacker_widget_info" />
+        </receiver>
     </application>
 
 </manifest>
