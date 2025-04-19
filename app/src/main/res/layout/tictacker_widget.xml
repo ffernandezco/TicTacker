@@ -4,34 +4,34 @@
     android:layout_height="match_parent"
     android:background="@drawable/widget_background"
     android:orientation="vertical"
-    android:padding="8dp">
+    android:padding="4dp">
 
     <TextView
         android:id="@+id/tv_widget_status"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="4dp"
+        android:layout_marginBottom="2dp"
         android:gravity="center"
         android:text="@string/estado_no_fichado"
-        android:textColor="#FFFFFF"
-        android:textSize="14sp"
+        android:textColor="#000000"
+        android:textSize="16sp"
         android:textStyle="bold" />
 
     <TextView
         android:id="@+id/tv_widget_time_worked"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
+        android:layout_marginBottom="4dp"
         android:gravity="center"
         android:text="@string/time_worked"
-        android:textColor="#FFFFFF"
-        android:textSize="12sp" />
+        android:textColor="#000000"
+        android:textSize="14sp" />
 
     <Button
         android:id="@+id/btn_widget_fichar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="36dp"
         android:text="@string/fichar_entrada"
-        android:textSize="12sp" />
+        android:textSize="14sp" />
 
 </LinearLayout>
