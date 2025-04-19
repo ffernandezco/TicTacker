@@ -139,4 +139,16 @@
     <string name="password_too_short">La contraseña debe tener al menos 4 caracteres</string>
     <string name="not_logged_in">Not logged in</string>
     <string name="open_app">Open app</string>
+    <string name="reminder_settings">Reminder Settings</string>
+    <string name="enable_reminder">Enable reminder</string>
+    <string name="on">ON</string>
+    <string name="off">OFF</string>
+    <string name="reminder_time">Reminder time</string>
+    <string name="reminder_description">You\'ll receive a notification at this time if you haven\'t clocked in for the day.</string>
+    <string name="reminder_notification_title">Clock-in Reminder</string>
+    <string name="reminder_notification_message">It\'s %s and you haven\'t clocked in yet today!</string>
+    <string name="clock_in_now">Clock in now</string>
+    <string name="alarm_permission_title">Permiso requerido</string>
+    <string name="alarm_permission_message">La aplicación necesita permiso para programar alarmas exactas para los recordatorios de fichaje.</string>
+    <string name="cancel">Cancelar</string>
 </resources>

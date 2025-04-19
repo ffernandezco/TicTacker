@@ -3,6 +3,8 @@ package eus.ehu.tictacker;
 import static androidx.core.content.ContentProviderCompat.requireContext;
 
 import android.Manifest;
+import android.app.AlarmManager;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -21,6 +23,7 @@ import android.widget.TextView;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.content.ContextCompat;
@@ -204,7 +207,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-
     private void scheduleWorkTimeCheck() {
         PeriodicWorkRequest workRequest = new PeriodicWorkRequest.Builder(
                 WorkTimeCheckWorker.class,
@@ -212,6 +214,10 @@ public class MainActivity extends AppCompatActivity {
                 .build();
 
         WorkManager.getInstance(this).enqueue(workRequest);
+    }
+
+    private void initializeClockInReminder() {
+        ClockInReminderService.scheduleReminder(this);
     }
 
     private void setupNavigationView(NavigationView navigationView) {
@@ -293,6 +299,23 @@ public class MainActivity extends AppCompatActivity {
     public void setSelectedMenuItem(int menuItemId) {
         NavigationView navigationView = findViewById(R.id.nav_view);
         navigationView.setCheckedItem(menuItemId);
+    }
+
+    private void checkAlarmPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+            if (!alarmManager.canScheduleExactAlarms()) {
+                new AlertDialog.Builder(this)
+                        .setTitle(R.string.alarm_permission_title)
+                        .setMessage(R.string.alarm_permission_message)
+                        .setPositiveButton(R.string.settings, (dialog, which) -> {
+                            Intent intent = new Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM);
+                            startActivity(intent);
+                        })
+                        .setNegativeButton(R.string.cancel, null)
+                        .show();
+            }
+        }
     }
 
     @Override

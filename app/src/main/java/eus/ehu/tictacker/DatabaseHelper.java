@@ -168,18 +168,40 @@ public class DatabaseHelper {
         });
     }
 
-    public void saveSettings(float weeklyHours, int workingDays, BooleanCallback callback) {
+    public void saveSettings(float weeklyHours, int workingDays, boolean reminderEnabled,
+                             int reminderHour, int reminderMinute, BooleanCallback callback) {
         Data inputData = new Data.Builder()
                 .putString("endpoint", "settings.php")
                 .putString("action", "save")
                 .putString("param_weekly_hours", String.valueOf(weeklyHours))
                 .putString("param_working_days", String.valueOf(workingDays))
+                .putString("param_reminder_enabled", String.valueOf(reminderEnabled ? 1 : 0))
+                .putString("param_reminder_hour", String.valueOf(reminderHour))
+                .putString("param_reminder_minute", String.valueOf(reminderMinute))
                 .build();
 
         executeWorker(inputData, new JsonCallback() {
             @Override
             public void onResponse(JsonObject response) {
                 boolean success = response != null && response.has("success") && response.get("success").getAsBoolean();
+
+                // Guardar también en SharedPreferences
+                if (success) {
+                    SharedPreferences prefs = context.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE);
+                    SharedPreferences.Editor editor = prefs.edit();
+                    editor.putBoolean("reminder_enabled", reminderEnabled);
+                    editor.putInt("reminder_hour", reminderHour);
+                    editor.putInt("reminder_minute", reminderMinute);
+                    editor.apply();
+
+                    // Programar o cancelar la alarma según la configuración
+                    if (reminderEnabled) {
+                        ClockInReminderService.scheduleReminder(context);
+                    } else {
+                        ClockInReminderService.cancelReminder(context);
+                    }
+                }
+
                 callback.onResult(success);
             }
         });
@@ -194,7 +216,7 @@ public class DatabaseHelper {
         executeWorker(inputData, new JsonCallback() {
             @Override
             public void onResponse(JsonObject response) {
-                float[] settings = new float[]{40.0f, 5.0f};
+                float[] settings = new float[]{40.0f, 5.0f, 0.0f, 9.0f, 0.0f};
                 if (response != null && response.has("success") && response.get("success").getAsBoolean() && response.has("data")) {
                     JsonObject dataObj = response.getAsJsonObject("data");
                     if (dataObj.has("weekly_hours") && !dataObj.get("weekly_hours").isJsonNull()) {
@@ -203,11 +225,29 @@ public class DatabaseHelper {
                     if (dataObj.has("working_days") && !dataObj.get("working_days").isJsonNull()) {
                         settings[1] = dataObj.get("working_days").getAsFloat();
                     }
+                    if (dataObj.has("reminder_enabled") && !dataObj.get("reminder_enabled").isJsonNull()) {
+                        settings[2] = dataObj.get("reminder_enabled").getAsFloat();
+                    }
+                    if (dataObj.has("reminder_hour") && !dataObj.get("reminder_hour").isJsonNull()) {
+                        settings[3] = dataObj.get("reminder_hour").getAsFloat();
+                    }
+                    if (dataObj.has("reminder_minute") && !dataObj.get("reminder_minute").isJsonNull()) {
+                        settings[4] = dataObj.get("reminder_minute").getAsFloat();
+                    }
+
+                    // Actualizar preferencias locales
+                    SharedPreferences prefs = context.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE);
+                    SharedPreferences.Editor editor = prefs.edit();
+                    editor.putBoolean("reminder_enabled", settings[2] > 0);
+                    editor.putInt("reminder_hour", (int)settings[3]);
+                    editor.putInt("reminder_minute", (int)settings[4]);
+                    editor.apply();
                 }
                 callback.onSettingsReceived(settings);
             }
         });
     }
+
 
     public void deleteAllFichajes(String username, BooleanCallback callback) {
         Data inputData = new Data.Builder()

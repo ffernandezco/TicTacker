@@ -32,6 +32,13 @@ public class SettingsActivity extends AppCompatActivity {
 
     private int selectedHours = 40;
     private int selectedMinutes = 0;
+    private ToggleButton toggleReminder;
+    private Button btnIncreaseReminderHour, btnDecreaseReminderHour;
+    private Button btnIncreaseReminderMinute, btnDecreaseReminderMinute;
+    private TextView tvReminderHourValue, tvReminderMinuteValue;
+    private boolean reminderEnabled = false;
+    private int reminderHour = 9;
+    private int reminderMinute = 0;
 
     private static final int MAX_HOURS = 168;
     private static final int MIN_HOURS = 0;
@@ -54,6 +61,16 @@ public class SettingsActivity extends AppCompatActivity {
         btnDecreaseHours = findViewById(R.id.btnDecreaseHours);
         btnIncreaseMinutes = findViewById(R.id.btnIncreaseMinutes);
         btnDecreaseMinutes = findViewById(R.id.btnDecreaseMinutes);
+
+        toggleReminder = findViewById(R.id.toggleReminder);
+        tvReminderHourValue = findViewById(R.id.tvReminderHourValue);
+        tvReminderMinuteValue = findViewById(R.id.tvReminderMinuteValue);
+        btnIncreaseReminderHour = findViewById(R.id.btnIncreaseReminderHour);
+        btnDecreaseReminderHour = findViewById(R.id.btnDecreaseReminderHour);
+        btnIncreaseReminderMinute = findViewById(R.id.btnIncreaseReminderMinute);
+        btnDecreaseReminderMinute = findViewById(R.id.btnDecreaseReminderMinute);
+
+        setupReminderControls();
 
         btnDeleteHistory = findViewById(R.id.btnDeleteHistory);
 
@@ -85,7 +102,7 @@ public class SettingsActivity extends AppCompatActivity {
             }
 
             saveLanguagePreference(selectedLanguage);
-            dbHelper.saveSettings(weeklyHours, workingDays, success -> {
+            dbHelper.saveSettings(weeklyHours, workingDays, reminderEnabled, reminderHour, reminderMinute, success -> {
                 if (success) {
                     setAppLocale(selectedLanguage);
                     restartApp();
@@ -211,11 +228,19 @@ public class SettingsActivity extends AppCompatActivity {
         dbHelper.getSettings(settings -> {
             selectedHours = (int) settings[0];
             selectedMinutes = Math.round((settings[0] - selectedHours) * 60 / MINUTE_INCREMENT) * MINUTE_INCREMENT;
+            reminderEnabled = settings[2] > 0;
+            reminderHour = (int) settings[3];
+            reminderMinute = (int) settings[4];
 
             runOnUiThread(() -> {
                 updateHoursDisplay();
                 updateMinutesDisplay();
                 setSelectedDays((int) settings[1]);
+
+                // Actualizar controles de la alarma
+                toggleReminder.setChecked(reminderEnabled);
+                tvReminderHourValue.setText(String.format(Locale.getDefault(), "%02d", reminderHour));
+                tvReminderMinuteValue.setText(String.format(Locale.getDefault(), "%02d", reminderMinute));
             });
         });
     }
@@ -259,6 +284,42 @@ public class SettingsActivity extends AppCompatActivity {
                 .setNegativeButton(getString(R.string.no), (dialog, which) -> dialog.dismiss())
                 .setCancelable(true)
                 .show();
+    }
+
+    private void setupReminderControls() {
+        toggleReminder.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            reminderEnabled = isChecked;
+        });
+
+        btnIncreaseReminderHour.setOnClickListener(v -> {
+            if (reminderHour < 23) {
+                reminderHour++;
+                tvReminderHourValue.setText(String.format(Locale.getDefault(), "%02d", reminderHour));
+            }
+        });
+
+        btnDecreaseReminderHour.setOnClickListener(v -> {
+            if (reminderHour > 0) {
+                reminderHour--;
+                tvReminderHourValue.setText(String.format(Locale.getDefault(), "%02d", reminderHour));
+            }
+        });
+
+        btnIncreaseReminderMinute.setOnClickListener(v -> {
+            reminderMinute += 5;
+            if (reminderMinute >= 60) {
+                reminderMinute = 0;
+            }
+            tvReminderMinuteValue.setText(String.format(Locale.getDefault(), "%02d", reminderMinute));
+        });
+
+        btnDecreaseReminderMinute.setOnClickListener(v -> {
+            reminderMinute -= 5;
+            if (reminderMinute < 0) {
+                reminderMinute = 55;
+            }
+            tvReminderMinuteValue.setText(String.format(Locale.getDefault(), "%02d", reminderMinute));
+        });
     }
 
     @Override

@@ -55,6 +55,13 @@ public class SettingsFragment extends Fragment {
     private Button btnChangeLogo, btnResetLogo;
     private Uri selectedLogoUri = null;
     private Button btnLogout;
+    private TextView tvReminderHour, tvReminderMinute;
+    private Button btnIncreaseReminderHour, btnDecreaseReminderHour;
+    private Button btnIncreaseReminderMinute, btnDecreaseReminderMinute;
+    private ToggleButton toggleReminder;
+
+    private int reminderHour = 9;
+    private int reminderMinute = 0;
     private static final int PICK_IMAGE_REQUEST = 1001;
 
     @Override
@@ -152,6 +159,14 @@ public class SettingsFragment extends Fragment {
         ivLogoPreview = view.findViewById(R.id.ivLogoPreview);
         btnChangeLogo = view.findViewById(R.id.btnChangeLogo);
         btnResetLogo = view.findViewById(R.id.btnResetLogo);
+
+        toggleReminder = view.findViewById(R.id.toggleReminder);
+        tvReminderHour = view.findViewById(R.id.tvReminderHourValue);
+        tvReminderMinute = view.findViewById(R.id.tvReminderMinuteValue);
+        btnIncreaseReminderHour = view.findViewById(R.id.btnIncreaseReminderHour);
+        btnDecreaseReminderHour = view.findViewById(R.id.btnDecreaseReminderHour);
+        btnIncreaseReminderMinute = view.findViewById(R.id.btnIncreaseReminderMinute);
+        btnDecreaseReminderMinute = view.findViewById(R.id.btnDecreaseReminderMinute);
     }
 
     private void setupNumberPickers() {
@@ -202,6 +217,69 @@ public class SettingsFragment extends Fragment {
         tvMinutesValue.setText(String.format(Locale.getDefault(), "%02d", selectedMinutes));
     }
 
+    private void setupReminderPickers() {
+        btnIncreaseReminderHour.setOnClickListener(v -> {
+            if (reminderHour < 23) {
+                reminderHour++;
+            } else {
+                reminderHour = 0;
+            }
+            updateReminderHourDisplay();
+        });
+
+        btnDecreaseReminderHour.setOnClickListener(v -> {
+            if (reminderHour > 0) {
+                reminderHour--;
+            } else {
+                reminderHour = 23;
+            }
+            updateReminderHourDisplay();
+        });
+
+        btnIncreaseReminderMinute.setOnClickListener(v -> {
+            reminderMinute += 5;
+            if (reminderMinute >= 60) {
+                reminderMinute = 0;
+                if (reminderHour < 23) {
+                    reminderHour++;
+                } else {
+                    reminderHour = 0;
+                }
+                updateReminderHourDisplay();
+            }
+            updateReminderMinuteDisplay();
+        });
+
+        btnDecreaseReminderMinute.setOnClickListener(v -> {
+            reminderMinute -= 5;
+            if (reminderMinute < 0) {
+                reminderMinute = 55;
+                if (reminderHour > 0) {
+                    reminderHour--;
+                } else {
+                    reminderHour = 23;
+                }
+                updateReminderHourDisplay();
+            }
+            updateReminderMinuteDisplay();
+        });
+
+        toggleReminder.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            btnIncreaseReminderHour.setEnabled(isChecked);
+            btnDecreaseReminderHour.setEnabled(isChecked);
+            btnIncreaseReminderMinute.setEnabled(isChecked);
+            btnDecreaseReminderMinute.setEnabled(isChecked);
+        });
+    }
+
+    private void updateReminderHourDisplay() {
+        tvReminderHour.setText(String.format(Locale.getDefault(), "%02d", reminderHour));
+    }
+
+    private void updateReminderMinuteDisplay() {
+        tvReminderMinute.setText(String.format(Locale.getDefault(), "%02d", reminderMinute));
+    }
+
     private void loadSavedSettings() {
         SharedPreferences prefs = requireActivity().getSharedPreferences("AppPrefs", requireContext().MODE_PRIVATE);
         String lang = prefs.getString("language", "es");
@@ -218,6 +296,20 @@ public class SettingsFragment extends Fragment {
                     updateHoursDisplay();
                     updateMinutesDisplay();
                     setSelectedDays((int) settings[1]);
+
+                    // Cargar configuración de la alarma
+                    boolean reminderEnabled = settings[2] > 0;
+                    reminderHour = (int) settings[3];
+                    reminderMinute = (int) settings[4];
+
+                    toggleReminder.setChecked(reminderEnabled);
+                    updateReminderHourDisplay();
+                    updateReminderMinuteDisplay();
+
+                    btnIncreaseReminderHour.setEnabled(reminderEnabled);
+                    btnDecreaseReminderHour.setEnabled(reminderEnabled);
+                    btnIncreaseReminderMinute.setEnabled(reminderEnabled);
+                    btnDecreaseReminderMinute.setEnabled(reminderEnabled);
                 });
             }
         });
@@ -236,13 +328,14 @@ public class SettingsFragment extends Fragment {
         String selectedLanguage = spinnerLanguage.getSelectedItemPosition() == 0 ? "es" : "en";
         float weeklyHours = selectedHours + (selectedMinutes / 60.0f);
         int workingDays = countSelectedDays();
+        boolean reminderEnabled = toggleReminder.isChecked();
 
         if (weeklyHours <= 0 || weeklyHours > 168 || workingDays <= 0 || workingDays > 7) {
             Toast.makeText(requireContext(), getString(R.string.invalid_settings), Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // Guardar logo si hay uno seleccionado
+        // Guardar logo si se cambia
         if (selectedLogoUri != null) {
             SharedPreferences prefs = requireActivity().getSharedPreferences("AppPrefs", requireContext().MODE_PRIVATE);
             SharedPreferences.Editor editor = prefs.edit();
@@ -250,13 +343,13 @@ public class SettingsFragment extends Fragment {
             editor.apply();
         }
 
-        // Guardar configuración en servidor
-        dbHelper.saveSettings(weeklyHours, workingDays, success -> {
+        // Subir cambios al servidor
+        dbHelper.saveSettings(weeklyHours, workingDays, reminderEnabled, reminderHour, reminderMinute, success -> {
             requireActivity().runOnUiThread(() -> {
                 if (success) {
-                    // Guardar preferencia de idioma localmente
+                    // Guardar en SharedPreferences el idioma
                     saveLanguagePreference(selectedLanguage);
-                    // Aplicar cambios de idioma
+                    // Aplicar cambio de idioma
                     setAppLocale(selectedLanguage);
                     Toast.makeText(requireContext(), R.string.settings_saved, Toast.LENGTH_SHORT).show();
                     restartApp();

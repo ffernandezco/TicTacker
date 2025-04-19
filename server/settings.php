@@ -18,19 +18,22 @@ if ($action == 'save') {
 
     $weeklyHours = floatval($data['weekly_hours']);
     $workingDays = intval($data['working_days']);
+    $reminderEnabled = intval($data['reminder_enabled']);
+    $reminderHour = intval($data['reminder_hour']);
+    $reminderMinute = intval($data['reminder_minute']);
 
     // Verificar si ya existe una configuración
     $checkQuery = "SELECT id FROM settings LIMIT 1";
     $checkResult = $con->query($checkQuery);
 
     if ($checkResult->num_rows > 0) {
-        $query = "UPDATE settings SET weekly_hours = ?, working_days = ? WHERE id = 1";
+        $query = "UPDATE settings SET weekly_hours = ?, working_days = ?, reminder_enabled = ?, reminder_hour = ?, reminder_minute = ? WHERE id = 1";
     } else {
-        $query = "INSERT INTO settings (weekly_hours, working_days) VALUES (?, ?)";
+        $query = "INSERT INTO settings (weekly_hours, working_days, reminder_enabled, reminder_hour, reminder_minute) VALUES (?, ?, ?, ?, ?)";
     }
 
     $stmt = $con->prepare($query);
-    $stmt->bind_param("di", $weeklyHours, $workingDays);
+    $stmt->bind_param("diiii", $weeklyHours, $workingDays, $reminderEnabled, $reminderHour, $reminderMinute);
     $response["success"] = $stmt->execute();
     $stmt->close();
 } elseif ($action == 'get') {

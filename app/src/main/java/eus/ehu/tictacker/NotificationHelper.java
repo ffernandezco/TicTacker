@@ -8,8 +8,11 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.icu.text.SimpleDateFormat;
 import android.os.Build;
+import android.Manifest;
 import androidx.core.app.NotificationCompat;
+import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationManagerCompat;
+import android.content.pm.PackageManager;
 
 import java.util.Date;
 import java.util.Locale;
@@ -17,6 +20,7 @@ import java.util.Locale;
 public class NotificationHelper {
     private static final String CHANNEL_ID = "trabajo_channel";
     private static final int NOTIFICATION_ID = 1001;
+    private static final int REMINDER_NOTIFICATION_ID = 1002;
     private final Context context;
 
     public NotificationHelper(Context context) {
@@ -131,4 +135,37 @@ public class NotificationHelper {
             return NotificationManagerCompat.from(context).areNotificationsEnabled();
         }
     }
+
+    // Enviar notificaciones a partir del broadcast de la alarma
+    public void sendClockInReminderNotification(String title, String message) {
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(title)
+                .setContentText(message)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setAutoCancel(true);
+
+        // Crear intent para cuando el usuario pulsa la notificación
+        Intent intent = new Intent(context, MainActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+                context, 0, intent, PendingIntent.FLAG_IMMUTABLE);
+        builder.setContentIntent(pendingIntent);
+
+        // Añadir botón de acción para ir directamente a la sección de ficjar
+        Intent clockInIntent = new Intent(context, MainActivity.class);
+        clockInIntent.putExtra("open_clock_in", true);
+        clockInIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        PendingIntent clockInPendingIntent = PendingIntent.getActivity(
+                context, 1, clockInIntent, PendingIntent.FLAG_IMMUTABLE);
+        builder.addAction(R.drawable.ic_notification, context.getString(R.string.clock_in_now), clockInPendingIntent);
+
+        // Mostrar la notificación
+        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
+        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+                == PackageManager.PERMISSION_GRANTED) {
+            notificationManager.notify(REMINDER_NOTIFICATION_ID, builder.build());
+        }
+    }
+
 }
