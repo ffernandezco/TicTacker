@@ -151,4 +151,8 @@
     <string name="cancel">Cancelar</string>
     <string name="permission_required">Permiso requerido</string>
     <string name="exact_alarm_permission_message">Para que los recordatorios funcionen correctamente, necesitas conceder permiso para programar alarmas exactas</string>
+    <string name="work_start_title">Inicio de trabajo: %1$s</string>
+    <string name="work_start_description">Registro de entrada laboral</string>
+    <string name="work_end_title">Fin de trabajo: %1$s</string>
+    <string name="work_end_description">Registro de salida laboral</string>
 </resources>

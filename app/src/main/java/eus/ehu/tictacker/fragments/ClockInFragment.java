@@ -1,11 +1,16 @@
 package eus.ehu.tictacker.fragments;
 
 import android.Manifest;
+import android.content.ContentUris;
+import android.content.ContentValues;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.location.Location;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.CalendarContract;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -28,6 +33,11 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.TimeZone;
+
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.OnSuccessListener;
 
 import eus.ehu.tictacker.DatabaseHelper;
 import eus.ehu.tictacker.Fichaje;
@@ -48,6 +58,7 @@ public class ClockInFragment extends Fragment {
     private NotificationHelper notificationHelper;
     private FusedLocationProviderClient fusedLocationClient;
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
+    private static final int CALENDAR_PERMISSION_REQUEST_CODE = 1002;
     private static final String TAG = "ClockInFragment";
 
     private boolean notificationShownThisSession = false;
@@ -117,7 +128,6 @@ public class ClockInFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        //dbHelper.close();
         FichajeEvents.setListener(null);
     }
 
@@ -127,6 +137,17 @@ public class ClockInFragment extends Fragment {
             requestPermissions(
                     new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
                     LOCATION_PERMISSION_REQUEST_CODE);
+        } else {
+            checkCalendarPermissionAndRegister();
+        }
+    }
+
+    private void checkCalendarPermissionAndRegister() {
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.WRITE_CALENDAR)
+                != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(
+                    new String[]{Manifest.permission.WRITE_CALENDAR},
+                    CALENDAR_PERMISSION_REQUEST_CODE);
         } else {
             getCurrentLocationAndRegister();
         }
@@ -155,6 +176,7 @@ public class ClockInFragment extends Fragment {
     private void registrarFichaje(double latitude, double longitude) {
         SimpleDateFormat sdfFecha = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
         SimpleDateFormat sdfHora = new SimpleDateFormat("HH:mm:ss", Locale.getDefault());
+        SimpleDateFormat sdfDateTime = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
 
         String fechaActual = sdfFecha.format(new Date());
         String horaActual = sdfHora.format(new Date());
@@ -181,6 +203,15 @@ public class ClockInFragment extends Fragment {
                                 Toast.makeText(requireContext(),
                                         "Entrada registrada: " + horaActual,
                                         Toast.LENGTH_SHORT).show();
+
+                                // Añadir al calendario
+                                try {
+                                    String eventTitle = getString(R.string.work_start_title, username);
+                                    String eventDescription = getString(R.string.work_start_description);
+                                    addCalendarEvent(fechaActual + " " + horaActual, eventTitle, eventDescription);
+                                } catch (Exception e) {
+                                    Log.e(TAG, "Error al añadir evento de entrada al calendario", e);
+                                }
                             });
                         } else {
                             getActivity().runOnUiThread(() -> {
@@ -289,6 +320,16 @@ public class ClockInFragment extends Fragment {
                     Toast.makeText(requireContext(),
                             "Salida registrada: " + horaSalida,
                             Toast.LENGTH_SHORT).show();
+
+                    // Añadir al calendario
+                    try {
+                        String username = dbHelper.getCurrentUsername(requireContext());
+                        String eventTitle = getString(R.string.work_end_title, username);
+                        String eventDescription = getString(R.string.work_end_description);
+                        addCalendarEvent(fichaje.fecha + " " + horaSalida, eventTitle, eventDescription);
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error al añadir evento de salida al calendario", e);
+                    }
                 });
             } else {
                 getActivity().runOnUiThread(() -> {
@@ -298,6 +339,64 @@ public class ClockInFragment extends Fragment {
                 });
             }
         });
+    }
+
+    private long addCalendarEvent(String dateTime, String title, String description) {
+        try {
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+            Date eventDate = sdf.parse(dateTime);
+
+            if (eventDate == null) return -1;
+
+            long startTime = eventDate.getTime();
+            long endTime = startTime; // Para eventos puntuales
+
+            // Necesitamos obtener el ID del calendario
+            long calendarId = getCalendarId();
+            if (calendarId == -1) return -1;
+
+            ContentValues values = new ContentValues();
+            values.put(CalendarContract.Events.DTSTART, startTime);
+            values.put(CalendarContract.Events.DTEND, endTime);
+            values.put(CalendarContract.Events.TITLE, title);
+            values.put(CalendarContract.Events.DESCRIPTION, description);
+            values.put(CalendarContract.Events.CALENDAR_ID, calendarId);
+            values.put(CalendarContract.Events.EVENT_TIMEZONE, TimeZone.getDefault().getID());
+            values.put(CalendarContract.Events.AVAILABILITY, CalendarContract.Events.AVAILABILITY_BUSY);
+
+            Uri uri = requireContext().getContentResolver().insert(CalendarContract.Events.CONTENT_URI, values);
+            if (uri != null) {
+                return ContentUris.parseId(uri);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error al añadir evento al calendario", e);
+        }
+        return -1;
+    }
+
+    private long getCalendarId() {
+        String[] projection = new String[] {
+                CalendarContract.Calendars._ID,
+                CalendarContract.Calendars.CALENDAR_DISPLAY_NAME
+        };
+
+        String selection = CalendarContract.Calendars.VISIBLE + " = 1 AND " +
+                CalendarContract.Calendars.IS_PRIMARY + " = 1";
+
+        try (Cursor cursor = requireContext().getContentResolver().query(
+                CalendarContract.Calendars.CONTENT_URI,
+                projection,
+                selection,
+                null,
+                null)) {
+
+            if (cursor != null && cursor.moveToFirst()) {
+                return cursor.getLong(0);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error al obtener ID del calendario", e);
+        }
+        return -1;
     }
 
     private void showConfirmClockOutDialog(Fichaje fichaje, String horaSalida, double latitude, double longitude) {
@@ -353,8 +452,10 @@ public class ClockInFragment extends Fragment {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+        if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+                checkCalendarPermissionAndRegister();
+            } else if (requestCode == CALENDAR_PERMISSION_REQUEST_CODE) {
                 getCurrentLocationAndRegister();
             }
         }
