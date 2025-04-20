@@ -328,7 +328,9 @@
                             android:layout_width="48dp"
                             android:layout_height="48dp"
                             android:text="-"
-                            android:textSize="20sp" />
+                            android:textSize="24sp"
+                            android:textAlignment="center"
+                            android:padding="0dp"/>
 
                         <TextView
                             android:id="@+id/tvReminderHourValue"
@@ -344,7 +346,9 @@
                             android:layout_width="48dp"
                             android:layout_height="48dp"
                             android:text="+"
-                            android:textSize="20sp" />
+                            android:textSize="24sp"
+                            android:textAlignment="center"
+                            android:padding="0dp"/>
                     </LinearLayout>
 
                     <TextView
@@ -367,7 +371,9 @@
                             android:layout_width="48dp"
                             android:layout_height="48dp"
                             android:text="-"
-                            android:textSize="20sp" />
+                            android:textSize="24sp"
+                            android:textAlignment="center"
+                            android:padding="0dp" />
 
                         <TextView
                             android:id="@+id/tvReminderMinuteValue"
@@ -383,7 +389,9 @@
                             android:layout_width="48dp"
                             android:layout_height="48dp"
                             android:text="+"
-                            android:textSize="20sp" />
+                            android:textSize="24sp"
+                            android:textAlignment="center"
+                            android:padding="0dp" />
                     </LinearLayout>
                 </LinearLayout>
 

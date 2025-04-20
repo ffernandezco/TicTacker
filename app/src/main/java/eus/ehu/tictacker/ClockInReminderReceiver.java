@@ -16,9 +16,8 @@ public class ClockInReminderReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        Log.d(TAG, "Recibida alarma broadcast");
+        Log.d(TAG, "Alarma recivida en " + new Date().toString());
 
-        // Comprobar si el usuario tiene algún fichaje en el día
         DatabaseHelper dbHelper = new DatabaseHelper(context);
         String username = dbHelper.getCurrentUsername(context);
         String currentDate = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
@@ -26,24 +25,30 @@ public class ClockInReminderReceiver extends BroadcastReceiver {
         dbHelper.obtenerFichajesDeHoy(username, new DatabaseHelper.FichajesCallback() {
             @Override
             public void onFichajesReceived(List<Fichaje> fichajes) {
+                boolean hasClockInToday = false;
                 boolean hasActiveClockIn = false;
 
-                // Comprobar si hay fichajes activos
                 for (Fichaje fichaje : fichajes) {
                     if (fichaje.horaSalida == null || fichaje.horaSalida.isEmpty()) {
                         hasActiveClockIn = true;
-                        break;
+                    }
+                    if (fichaje.horaEntrada != null && !fichaje.horaEntrada.isEmpty()) {
+                        hasClockInToday = true;
                     }
                 }
 
-                // Enviar notificación siempre que no haya fichado
-                if (!hasActiveClockIn) {
+                Log.d(TAG, "Check results - hasClockInToday: " + hasClockInToday +
+                        ", hasActiveClockIn: " + hasActiveClockIn);
+
+                // Enviar notificación si no hay fichajes hoy o hay uno activo sin finalizar
+                if (!hasClockInToday || hasActiveClockIn) {
                     String currentTime = DateFormat.getTimeFormat(context).format(new Date());
                     String title = context.getString(R.string.reminder_notification_title);
                     String message = context.getString(R.string.reminder_notification_message, currentTime);
 
                     NotificationHelper notificationHelper = new NotificationHelper(context);
                     notificationHelper.sendClockInReminderNotification(title, message);
+                    Log.d(TAG, "Notificación enviada");
                 }
 
                 // Programar la alarma para el día siguiente

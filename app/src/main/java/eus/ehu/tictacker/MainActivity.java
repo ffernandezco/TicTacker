@@ -301,21 +301,27 @@ public class MainActivity extends AppCompatActivity {
         navigationView.setCheckedItem(menuItemId);
     }
 
-    private void checkAlarmPermission() {
+    private void checkReminderPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
             if (!alarmManager.canScheduleExactAlarms()) {
                 new AlertDialog.Builder(this)
-                        .setTitle(R.string.alarm_permission_title)
-                        .setMessage(R.string.alarm_permission_message)
-                        .setPositiveButton(R.string.settings, (dialog, which) -> {
+                        .setTitle(getString(R.string.permission_required))
+                        .setMessage(getString(R.string.exact_alarm_permission_message))
+                        .setPositiveButton(getString(R.string.settings), (dialog, which) -> {
                             Intent intent = new Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM);
                             startActivity(intent);
                         })
-                        .setNegativeButton(R.string.cancel, null)
+                        .setNegativeButton(getString(R.string.cancel), null)
                         .show();
             }
         }
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        checkReminderPermissions();
     }
 
     @Override

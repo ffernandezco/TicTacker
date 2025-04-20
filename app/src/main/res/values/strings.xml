@@ -148,7 +148,7 @@
     <string name="reminder_notification_title">Clock-in Reminder</string>
     <string name="reminder_notification_message">It\'s %s and you haven\'t clocked in yet today!</string>
     <string name="clock_in_now">Clock in now</string>
-    <string name="alarm_permission_title">Permiso requerido</string>
-    <string name="alarm_permission_message">La aplicación necesita permiso para programar alarmas exactas para los recordatorios de fichaje.</string>
+    <string name="permission_required">Permiso requerido</string>
+    <string name="exact_alarm_permission_message">Para que los recordatorios funcionen correctamente, necesitas conceder permiso para programar alarmas exactas</string>
     <string name="cancel">Cancelar</string>
 </resources>

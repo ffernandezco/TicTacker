@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Build;
+import android.provider.Settings;
 import android.util.Log;
 
 import java.util.Calendar;
@@ -14,43 +15,30 @@ public class ClockInReminderService {
     private static final String TAG = "ClockInReminderService";
     private static final int REMINDER_REQUEST_CODE = 1234;
 
-    // Configurar alarma según preferencias del usuario
     public static void scheduleReminder(Context context) {
         SharedPreferences prefs = context.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE);
         boolean reminderEnabled = prefs.getBoolean("reminder_enabled", false);
+        int reminderHour = prefs.getInt("reminder_hour", 9);
+        int reminderMinute = prefs.getInt("reminder_minute", 0);
+
+        Log.d(TAG, "Programando recordatorio: " + reminderEnabled +
+                " at " + reminderHour + ":" + reminderMinute);
 
         if (!reminderEnabled) {
             cancelReminder(context);
             return;
         }
 
-        // Verificar permiso en Android 12+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-            if (!alarmManager.canScheduleExactAlarms()) {
-                // Mostrar explicación y redirigir a configuración
-                Intent intent = new Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM);
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                context.startActivity(intent);
-                return;
-            }
-        }
-
-        int reminderHour = prefs.getInt("reminder_hour", 9);
-        int reminderMinute = prefs.getInt("reminder_minute", 0);
-
-        // Configurar calendario para disparar alarma
         Calendar calendar = Calendar.getInstance();
         calendar.set(Calendar.HOUR_OF_DAY, reminderHour);
         calendar.set(Calendar.MINUTE, reminderMinute);
         calendar.set(Calendar.SECOND, 0);
 
-        // Si el tiempo ha pasado, lanzar la alarma el siguiente día
         if (calendar.getTimeInMillis() <= System.currentTimeMillis()) {
             calendar.add(Calendar.DAY_OF_YEAR, 1);
+            Log.d(TAG, "Recordatorio programado para el siguiente día");
         }
 
-        // Enviar alarma al broadcast receiver
         Intent intent = new Intent(context, ClockInReminderReceiver.class);
         PendingIntent pendingIntent = PendingIntent.getBroadcast(
                 context,
@@ -59,32 +47,50 @@ public class ClockInReminderService {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
-        // Configuración de la alarma
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        if (alarmManager != null) {
-            // Cancelar alarmas existentes
-            alarmManager.cancel(pendingIntent);
-
-            // Programar nueva alarma
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                alarmManager.setExactAndAllowWhileIdle(
-                        AlarmManager.RTC_WAKEUP,
-                        calendar.getTimeInMillis(),
-                        pendingIntent
-                );
-            } else {
-                alarmManager.setExact(
-                        AlarmManager.RTC_WAKEUP,
-                        calendar.getTimeInMillis(),
-                        pendingIntent
-                );
-            }
-
-            Log.d(TAG, "Reminder scheduled for " + calendar.getTime().toString());
+        if (alarmManager == null) {
+            Log.e(TAG, "AlarmManager null");
+            return;
         }
+
+        // Verificar permiso en Android 12 o superior
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (!alarmManager.canScheduleExactAlarms()) {
+                Log.w(TAG, "No se puede programar alarmas exactas. Solicitando permiso al usuario...");
+                Intent permissionIntent = new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM);
+                permissionIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(permissionIntent);
+                return;
+            }
+        }
+
+        // Cancelar cualquier alarma existente
+        alarmManager.cancel(pendingIntent);
+
+        // Programar la nueva alarma
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            alarmManager.setExactAndAllowWhileIdle(
+                    AlarmManager.RTC_WAKEUP,
+                    calendar.getTimeInMillis(),
+                    pendingIntent
+            );
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            alarmManager.setExact(
+                    AlarmManager.RTC_WAKEUP,
+                    calendar.getTimeInMillis(),
+                    pendingIntent
+            );
+        } else {
+            alarmManager.set(
+                    AlarmManager.RTC_WAKEUP,
+                    calendar.getTimeInMillis(),
+                    pendingIntent
+            );
+        }
+
+        Log.d(TAG, "Alarma programada para " + calendar.getTime().toString());
     }
 
-    // Cancelar recordatorio existente
     public static void cancelReminder(Context context) {
         Intent intent = new Intent(context, ClockInReminderReceiver.class);
         PendingIntent pendingIntent = PendingIntent.getBroadcast(
@@ -97,7 +103,7 @@ public class ClockInReminderService {
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (alarmManager != null) {
             alarmManager.cancel(pendingIntent);
-            Log.d(TAG, "Reminder cancelled");
+            Log.d(TAG, "Alarma quitada");
         }
     }
 }

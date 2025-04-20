@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import eus.ehu.tictacker.ClockInReminderService;
 import eus.ehu.tictacker.DatabaseHelper;
 import eus.ehu.tictacker.LoginActivity;
 import eus.ehu.tictacker.MainActivity;
@@ -55,7 +56,7 @@ public class SettingsFragment extends Fragment {
     private Button btnChangeLogo, btnResetLogo;
     private Uri selectedLogoUri = null;
     private Button btnLogout;
-    private TextView tvReminderHour, tvReminderMinute;
+    private TextView tvReminderHourValue, tvReminderMinuteValue;
     private Button btnIncreaseReminderHour, btnDecreaseReminderHour;
     private Button btnIncreaseReminderMinute, btnDecreaseReminderMinute;
     private ToggleButton toggleReminder;
@@ -95,6 +96,7 @@ public class SettingsFragment extends Fragment {
 
         loadSavedSettings();
         setupNumberPickers();
+        setupReminderPickers();
 
         btnSave.setOnClickListener(v -> saveSettings());
         btnDeleteHistory.setOnClickListener(v -> showDeleteConfirmationDialog());
@@ -161,8 +163,8 @@ public class SettingsFragment extends Fragment {
         btnResetLogo = view.findViewById(R.id.btnResetLogo);
 
         toggleReminder = view.findViewById(R.id.toggleReminder);
-        tvReminderHour = view.findViewById(R.id.tvReminderHourValue);
-        tvReminderMinute = view.findViewById(R.id.tvReminderMinuteValue);
+        tvReminderHourValue = view.findViewById(R.id.tvReminderHourValue);
+        tvReminderMinuteValue = view.findViewById(R.id.tvReminderMinuteValue);
         btnIncreaseReminderHour = view.findViewById(R.id.btnIncreaseReminderHour);
         btnDecreaseReminderHour = view.findViewById(R.id.btnDecreaseReminderHour);
         btnIncreaseReminderMinute = view.findViewById(R.id.btnIncreaseReminderMinute);
@@ -218,6 +220,7 @@ public class SettingsFragment extends Fragment {
     }
 
     private void setupReminderPickers() {
+        // Configurar listeners para los botones de hora
         btnIncreaseReminderHour.setOnClickListener(v -> {
             if (reminderHour < 23) {
                 reminderHour++;
@@ -236,6 +239,7 @@ public class SettingsFragment extends Fragment {
             updateReminderHourDisplay();
         });
 
+        // Configurar listeners para los botones de minutos
         btnIncreaseReminderMinute.setOnClickListener(v -> {
             reminderMinute += 5;
             if (reminderMinute >= 60) {
@@ -264,20 +268,39 @@ public class SettingsFragment extends Fragment {
             updateReminderMinuteDisplay();
         });
 
+        // Configurar el toggle del recordatorio
         toggleReminder.setOnCheckedChangeListener((buttonView, isChecked) -> {
             btnIncreaseReminderHour.setEnabled(isChecked);
             btnDecreaseReminderHour.setEnabled(isChecked);
             btnIncreaseReminderMinute.setEnabled(isChecked);
             btnDecreaseReminderMinute.setEnabled(isChecked);
+
+            // Actualizar el estado visual de los botones
+            btnIncreaseReminderHour.setAlpha(isChecked ? 1f : 0.5f);
+            btnDecreaseReminderHour.setAlpha(isChecked ? 1f : 0.5f);
+            btnIncreaseReminderMinute.setAlpha(isChecked ? 1f : 0.5f);
+            btnDecreaseReminderMinute.setAlpha(isChecked ? 1f : 0.5f);
         });
+
+        // Establecer estado inicial
+        boolean reminderEnabled = toggleReminder.isChecked();
+        btnIncreaseReminderHour.setEnabled(reminderEnabled);
+        btnDecreaseReminderHour.setEnabled(reminderEnabled);
+        btnIncreaseReminderMinute.setEnabled(reminderEnabled);
+        btnDecreaseReminderMinute.setEnabled(reminderEnabled);
+
+        btnIncreaseReminderHour.setAlpha(reminderEnabled ? 1f : 0.5f);
+        btnDecreaseReminderHour.setAlpha(reminderEnabled ? 1f : 0.5f);
+        btnIncreaseReminderMinute.setAlpha(reminderEnabled ? 1f : 0.5f);
+        btnDecreaseReminderMinute.setAlpha(reminderEnabled ? 1f : 0.5f);
     }
 
     private void updateReminderHourDisplay() {
-        tvReminderHour.setText(String.format(Locale.getDefault(), "%02d", reminderHour));
+        tvReminderHourValue.setText(String.format(Locale.getDefault(), "%02d", reminderHour));
     }
 
     private void updateReminderMinuteDisplay() {
-        tvReminderMinute.setText(String.format(Locale.getDefault(), "%02d", reminderMinute));
+        tvReminderMinuteValue.setText(String.format(Locale.getDefault(), "%02d", reminderMinute));
     }
 
     private void loadSavedSettings() {
@@ -330,27 +353,28 @@ public class SettingsFragment extends Fragment {
         int workingDays = countSelectedDays();
         boolean reminderEnabled = toggleReminder.isChecked();
 
-        if (weeklyHours <= 0 || weeklyHours > 168 || workingDays <= 0 || workingDays > 7) {
-            Toast.makeText(requireContext(), getString(R.string.invalid_settings), Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // Guardar logo si se cambia
-        if (selectedLogoUri != null) {
-            SharedPreferences prefs = requireActivity().getSharedPreferences("AppPrefs", requireContext().MODE_PRIVATE);
-            SharedPreferences.Editor editor = prefs.edit();
-            editor.putString("custom_logo_uri", selectedLogoUri.toString());
-            editor.apply();
-        }
+        // Guardar en SharedPreferences
+        SharedPreferences prefs = requireActivity().getSharedPreferences("AppPrefs", requireContext().MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putBoolean("reminder_enabled", reminderEnabled);
+        editor.putInt("reminder_hour", reminderHour);
+        editor.putInt("reminder_minute", reminderMinute);
+        editor.apply();
 
         // Subir cambios al servidor
         dbHelper.saveSettings(weeklyHours, workingDays, reminderEnabled, reminderHour, reminderMinute, success -> {
             requireActivity().runOnUiThread(() -> {
                 if (success) {
-                    // Guardar en SharedPreferences el idioma
                     saveLanguagePreference(selectedLanguage);
-                    // Aplicar cambio de idioma
                     setAppLocale(selectedLanguage);
+
+                    // Programar la alarma después de guardar los ajustes
+                    if (reminderEnabled) {
+                        ClockInReminderService.scheduleReminder(requireContext());
+                    } else {
+                        ClockInReminderService.cancelReminder(requireContext());
+                    }
+
                     Toast.makeText(requireContext(), R.string.settings_saved, Toast.LENGTH_SHORT).show();
                     restartApp();
                 } else {
