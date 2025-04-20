@@ -40,6 +40,7 @@ import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
 
 import com.google.android.material.navigation.NavigationView;
+import com.google.firebase.messaging.FirebaseMessaging;
 
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
@@ -145,9 +146,31 @@ public class MainActivity extends AppCompatActivity {
                 navController.navigate(R.id.nav_profile);
             });
         }
+
+        // Actualizar / Registrar token FCM en el servidor
+        FirebaseMessaging.getInstance().getToken()
+                .addOnCompleteListener(task -> {
+                    if (!task.isSuccessful()) {
+                        Log.w("FCM", "Error al obtener el token FCM", task.getException());
+                        return;
+                    }
+                    String token = task.getResult();
+                    Log.d("FCM", "Token: " + token);
+
+                    // Guardar el token en SharedPreferences
+                    SharedPreferences prefs = getSharedPreferences("app_prefs", MODE_PRIVATE);
+                    prefs.edit().putString("fcm_token", token).apply();
+
+                    // Subir token a la base de datos
+                    dbHelper.updateFCMToken(usuarioActual, token, success -> {
+                        if (success) {
+                            Log.d("FCM", "Token actualizado en la base de datos remota");
+                        } else {
+                            Log.e("FCM", "Error al actualizar el token en el servidor");
+                        }
+                    });
+                });
     }
-
-
 
     @Override
     public boolean onSupportNavigateUp() {

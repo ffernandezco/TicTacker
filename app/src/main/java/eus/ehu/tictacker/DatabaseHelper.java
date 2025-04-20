@@ -451,6 +451,23 @@ public class DatabaseHelper {
         });
     }
 
+    public void updateFCMToken(String username, String token, BooleanCallback callback) {
+        Data inputData = new Data.Builder()
+                .putString("endpoint", "fcm_tokens.php")
+                .putString("action", "update_token")
+                .putString("param_username", username)
+                .putString("param_token", token)
+                .build();
+
+        executeWorker(inputData, new JsonCallback() {
+            @Override
+            public void onResponse(JsonObject response) {
+                boolean success = response != null && response.has("success") && response.get("success").getAsBoolean();
+                callback.onResult(success);
+            }
+        });
+    }
+
     // Métodos auxiliares
     private void executeWorker(Data inputData, JsonCallback callback) {
         OneTimeWorkRequest workRequest = new OneTimeWorkRequest.Builder(DatabaseWorker.class)

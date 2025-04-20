@@ -168,4 +168,27 @@ public class NotificationHelper {
         }
     }
 
+    // Mostrar notificaciones recibidas por FCM
+    public static void showNotification(Context context, String title, String message) {
+        NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+
+        String channelId = "default_channel_id";
+        String channelName = "Default Channel";
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationChannel channel = new NotificationChannel(
+                    channelId, channelName, NotificationManager.IMPORTANCE_HIGH);
+            notificationManager.createNotificationChannel(channel);
+        }
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, channelId)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(title)
+                .setContentText(message)
+                .setAutoCancel(true)
+                .setPriority(NotificationCompat.PRIORITY_HIGH);
+
+        notificationManager.notify(0, builder.build());
+    }
+
 }
