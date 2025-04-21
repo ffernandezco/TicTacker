@@ -1,14 +1,20 @@
 package eus.ehu.tictacker.fragments;
 
 import android.Manifest;
+import android.content.ComponentName;
 import android.content.ContentUris;
 import android.content.ContentValues;
+import android.content.Context;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.location.Location;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.Looper;
 import android.provider.CalendarContract;
 import android.util.Log;
@@ -41,6 +47,7 @@ import eus.ehu.tictacker.FichajeEvents;
 import eus.ehu.tictacker.NotificationHelper;
 import eus.ehu.tictacker.R;
 import eus.ehu.tictacker.WorkTimeCalculator;
+import eus.ehu.tictacker.ForegroundTimeService;
 
 public class ClockInFragment extends Fragment {
     private DatabaseHelper dbHelper;
@@ -59,6 +66,25 @@ public class ClockInFragment extends Fragment {
 
     private boolean notificationShownThisSession = false;
     private long lastNotificationCheckTime = 0;
+
+    private ForegroundTimeService timeService;
+    private boolean serviceBound = false;
+
+    private ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            ForegroundTimeService.LocalBinder binder = (ForegroundTimeService.LocalBinder) service;
+            timeService = binder.getService();
+            serviceBound = true;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            serviceBound = false;
+            timeService = null;
+        }
+    };
+
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -95,6 +121,9 @@ public class ClockInFragment extends Fragment {
 
         notificationShownThisSession = false;
 
+        Intent serviceIntent = new Intent(requireContext(), ForegroundTimeService.class);
+        requireContext().bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
+
         FichajeEvents.setListener(new FichajeEvents.FichajeChangeListener() {
             @Override
             public void onFichajeChanged() {
@@ -124,6 +153,10 @@ public class ClockInFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        if (serviceBound) {
+            requireContext().unbindService(serviceConnection);
+            serviceBound = false;
+        }
         FichajeEvents.setListener(null);
     }
 
@@ -206,6 +239,7 @@ public class ClockInFragment extends Fragment {
                                 Toast.makeText(requireContext(),
                                         "Entrada registrada: " + horaActual,
                                         Toast.LENGTH_SHORT).show();
+                                startForegroundService();
                             });
                         } else {
                             getActivity().runOnUiThread(() -> {
@@ -234,6 +268,20 @@ public class ClockInFragment extends Fragment {
                                         showConfirmClockOutDialog(ultimoFichaje, horaActual, latitude, longitude);
                                     } else {
                                         completeClockOut(ultimoFichaje, horaActual, latitude, longitude);
+                                        boolean hasActiveEntries = false;
+                                        for (Fichaje f : todaysFichajes) {
+                                            if (f.id != ultimoFichaje.id &&
+                                                    f.horaEntrada != null &&
+                                                    (f.horaSalida == null || f.horaSalida.isEmpty())) {
+                                                hasActiveEntries = true;
+                                                break;
+                                            }
+                                        }
+
+                                        if (!hasActiveEntries) {
+                                            // Detener el servicio
+                                            stopForegroundService();
+                                        }
                                     }
                                 }
                             });
@@ -314,6 +362,7 @@ public class ClockInFragment extends Fragment {
                     Toast.makeText(requireContext(),
                             "Salida registrada: " + horaSalida,
                             Toast.LENGTH_SHORT).show();
+                    checkForActiveClockInsAndStopService(fichaje);
 
                     // Añadir al calendario un único evento que abarca desde la entrada hasta la salida
                     try {
@@ -580,6 +629,46 @@ public class ClockInFragment extends Fragment {
                 });
             }
         });
+    }
+
+    private void checkForActiveClockInsAndStopService(Fichaje currentFichaje) {
+        String username = dbHelper.getCurrentUsername(requireContext());
+        dbHelper.obtenerFichajesDeHoy(username, new DatabaseHelper.FichajesCallback() {
+            @Override
+            public void onFichajesReceived(List<Fichaje> todaysFichajes) {
+                boolean hasActiveEntries = false;
+                for (Fichaje fichaje : todaysFichajes) {
+                    if (fichaje.id != currentFichaje.id &&
+                            fichaje.horaEntrada != null &&
+                            (fichaje.horaSalida == null || fichaje.horaSalida.isEmpty())) {
+                        hasActiveEntries = true;
+                        break;
+                    }
+                }
+
+                if (!hasActiveEntries) {
+                    // Detener servicio
+                    stopForegroundService();
+                }
+            }
+        });
+    }
+
+    private void startForegroundService() {
+        Intent serviceIntent = new Intent(requireContext(), ForegroundTimeService.class);
+        serviceIntent.setAction("START_FOREGROUND");
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            requireContext().startForegroundService(serviceIntent);
+        } else {
+            requireContext().startService(serviceIntent);
+        }
+    }
+
+    private void stopForegroundService() {
+        Intent serviceIntent = new Intent(requireContext(), ForegroundTimeService.class);
+        serviceIntent.setAction("STOP_FOREGROUND");
+        requireContext().startService(serviceIntent);
     }
 
     @Override

@@ -72,6 +72,15 @@ public class WorkTimeCalculator {
         return String.format(Locale.getDefault(), "%02d:%02d", hours, mins);
     }
 
+    // Mismo para milisegundos
+    public static String formatTimeMillis(long timeMillis) {
+        long hours = TimeUnit.MILLISECONDS.toHours(timeMillis);
+        long minutes = TimeUnit.MILLISECONDS.toMinutes(timeMillis) - TimeUnit.HOURS.toMinutes(hours);
+        long seconds = TimeUnit.MILLISECONDS.toSeconds(timeMillis) - TimeUnit.HOURS.toSeconds(hours) - TimeUnit.MINUTES.toSeconds(minutes);
+
+        return String.format(Locale.getDefault(), "%02d:%02d:%02d", hours, minutes, seconds);
+    }
+
     // Horas por semana / días que se trabajan
     public static float calculateDailyHours(float weeklyHours, int workingDays) {
         if (workingDays <= 0) return 0;
@@ -128,4 +137,38 @@ public class WorkTimeCalculator {
         }
         return timeStr;
     }
+
+    public static Fichaje getCurrentActiveFichaje(List<Fichaje> fichajes) {
+        if (fichajes == null || fichajes.isEmpty()) {
+            return null;
+        }
+
+        for (Fichaje fichaje : fichajes) {
+            if (fichaje.horaEntrada != null && (fichaje.horaSalida == null || fichaje.horaSalida.isEmpty())) {
+                return fichaje;
+            }
+        }
+
+        return null;
+    }
+
+    public static long calculateTimeWorkedForActiveFichaje(Fichaje fichaje) {
+        if (fichaje == null || fichaje.horaEntrada == null) {
+            return 0;
+        }
+
+        try {
+            SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss", Locale.getDefault());
+            Date startTime = sdf.parse(fichaje.horaEntrada);
+            Date currentTime = new Date();
+
+            // Calcular tiempo fichado
+            return currentTime.getTime() - startTime.getTime();
+        } catch (ParseException e) {
+            e.printStackTrace();
+            return 0;
+        }
+    }
+
+
 }

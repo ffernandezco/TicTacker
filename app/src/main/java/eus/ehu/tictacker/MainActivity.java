@@ -20,6 +20,9 @@ import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.content.ComponentName;
+import android.content.ServiceConnection;
+import android.os.IBinder;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -59,6 +62,23 @@ public class MainActivity extends AppCompatActivity {
 
     private ActivityResultLauncher<String> requestPermissionLauncher;
 
+    private ForegroundTimeService timeService;
+    private boolean serviceBound = false;
+
+    private ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            ForegroundTimeService.LocalBinder binder = (ForegroundTimeService.LocalBinder) service;
+            timeService = binder.getService();
+            serviceBound = true;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            serviceBound = false;
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         dbHelper = new DatabaseHelper(this);
@@ -70,6 +90,8 @@ public class MainActivity extends AppCompatActivity {
         // Comprobar si se ha iniciado sesión
         sharedPreferences = getSharedPreferences("app_prefs", MODE_PRIVATE);
         String usuarioActual = sharedPreferences.getString("usuario_actual", null);
+
+        bindTimeService();
 
         if (usuarioActual == null) {
             startActivity(new Intent(this, LoginActivity.class));
@@ -172,6 +194,10 @@ public class MainActivity extends AppCompatActivity {
                 });
     }
 
+    private void bindTimeService() {
+        Intent serviceIntent = new Intent(this, ForegroundTimeService.class);
+        bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE);
+    }
     @Override
     public boolean onSupportNavigateUp() {
         return NavigationUI.navigateUp(navController, appBarConfiguration) || super.onSupportNavigateUp();
@@ -350,6 +376,9 @@ public class MainActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
         checkReminderPermissions();
+        if (!serviceBound) {
+            bindTimeService();
+        }
     }
 
     @Override
@@ -365,4 +394,14 @@ public class MainActivity extends AppCompatActivity {
         connectivityChecker.setNetworkStateListener(null);
         connectivityChecker.unregister();
     }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (serviceBound) {
+            unbindService(serviceConnection);
+            serviceBound = false;
+        }
+    }
+
 }

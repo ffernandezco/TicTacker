@@ -7,6 +7,7 @@ import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -22,6 +23,7 @@ import eus.ehu.tictacker.Fichaje;
 import eus.ehu.tictacker.R;
 import eus.ehu.tictacker.WorkTimeCalculator;
 import eus.ehu.tictacker.MainActivity;
+import eus.ehu.tictacker.ForegroundTimeService;
 
 public class TicTackerWidget extends AppWidgetProvider {
     private static final String TAG = "TicTackerWidget";
@@ -82,7 +84,7 @@ public class TicTackerWidget extends AppWidgetProvider {
             @Override
             public void onFichajeReceived(Fichaje ultimoFichaje) {
                 if (ultimoFichaje == null || ultimoFichaje.horaSalida != null) {
-                    // Fichar
+                    // Fichar entrada
                     Fichaje nuevoFichaje = new Fichaje();
                     nuevoFichaje.fecha = fechaActual;
                     nuevoFichaje.horaEntrada = horaActual;
@@ -98,6 +100,9 @@ public class TicTackerWidget extends AppWidgetProvider {
 
                         // Actualizar el widget cada minuto si se ha fichado
                         scheduleMinuteUpdates(context, true);
+
+                        // Iniciar el servicio en primer plano
+                        startForegroundService(context);
                     });
                 } else {
                     // Salida
@@ -110,10 +115,63 @@ public class TicTackerWidget extends AppWidgetProvider {
 
                         // Quitar actualizaciones cada minuto si se sale del fichaje para ahorrar recursos
                         scheduleMinuteUpdates(context, false);
+
+                        // Comprobar si hay otros fichajes activos, si no, detener el servicio
+                        checkForActiveClockInsAndStopService(context, ultimoFichaje);
                     });
                 }
             }
         });
+    }
+
+    // Método para comprobar si hay fichajes activos y detener el servicio si no hay ninguno
+    private void checkForActiveClockInsAndStopService(Context context, Fichaje currentFichaje) {
+        DatabaseHelper dbHelper = new DatabaseHelper(context);
+        String username = dbHelper.getCurrentUsername(context);
+
+        dbHelper.obtenerFichajesDeHoy(username, new DatabaseHelper.FichajesCallback() {
+            @Override
+            public void onFichajesReceived(List<Fichaje> todaysFichajes) {
+                boolean hasActiveEntries = false;
+                for (Fichaje fichaje : todaysFichajes) {
+                    if (fichaje.id != currentFichaje.id &&
+                            fichaje.horaEntrada != null &&
+                            (fichaje.horaSalida == null || fichaje.horaSalida.isEmpty())) {
+                        hasActiveEntries = true;
+                        break;
+                    }
+                }
+
+                if (!hasActiveEntries) {
+                    // Detener servicio si no hay entradas activas
+                    stopForegroundService(context);
+                }
+            }
+        });
+    }
+
+    /*
+    private void startForegroundService(Context context) {
+        Intent serviceIntent = new Intent(context, ForegroundTimeService.class);
+        serviceIntent.setAction("START_FOREGROUND");
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(serviceIntent);
+        } else {
+            context.startService(serviceIntent);
+        }
+
+        Log.d(TAG, "Servicio ForegroundTimeService iniciado desde el widget");
+    }
+     */
+
+    // Método para detener el servicio en primer plano
+    private void stopForegroundService(Context context) {
+        Intent serviceIntent = new Intent(context, ForegroundTimeService.class);
+        serviceIntent.setAction("STOP_FOREGROUND");
+        context.startService(serviceIntent);
+
+        Log.d(TAG, "Servicio ForegroundTimeService detenido desde el widget");
     }
 
     public static void updateAppWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
@@ -210,6 +268,9 @@ public class TicTackerWidget extends AppWidgetProvider {
 
                             // Actualizar cada minuto
                             scheduleMinuteUpdates(context, true);
+
+                            // Asegurarse de que el servicio de primer plano esté activo
+                            startForegroundService(context);
                         } else {
                             views.setTextViewText(R.id.tv_widget_status,
                                     context.getString(R.string.estado_no_fichado));
@@ -312,7 +373,25 @@ public class TicTackerWidget extends AppWidgetProvider {
                     }
                 }
                 scheduleMinuteUpdates(context, hasActiveClockIn);
+
+                // Si hay un fichaje activo, asegurarse de que el servicio está funcionando
+                if (hasActiveClockIn) {
+                    startForegroundService(context);
+                }
             });
         }
+    }
+
+    private static void startForegroundService(Context context) {
+        Intent serviceIntent = new Intent(context, ForegroundTimeService.class);
+        serviceIntent.setAction("START_FOREGROUND");
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(serviceIntent);
+        } else {
+            context.startService(serviceIntent);
+        }
+
+        Log.d(TAG, "Servicio ForegroundTimeService iniciado desde método estático");
     }
 }
