@@ -152,14 +152,6 @@ public class NotificationHelper {
                 context, 0, intent, PendingIntent.FLAG_IMMUTABLE);
         builder.setContentIntent(pendingIntent);
 
-        // Añadir botón de acción para ir directamente a la sección de ficjar
-        Intent clockInIntent = new Intent(context, MainActivity.class);
-        clockInIntent.putExtra("open_clock_in", true);
-        clockInIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        PendingIntent clockInPendingIntent = PendingIntent.getActivity(
-                context, 1, clockInIntent, PendingIntent.FLAG_IMMUTABLE);
-        builder.addAction(R.drawable.ic_notification, context.getString(R.string.clock_in_now), clockInPendingIntent);
-
         // Mostrar la notificación
         NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
         if (ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
