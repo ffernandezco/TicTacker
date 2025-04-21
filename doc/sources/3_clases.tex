@@ -71,8 +71,6 @@ La aplicación cuenta con diferentes clases Java diferenciadas que dan respuesta
   \item \textbf{WorkTimeCheckWorker}: worker que comprueba periódicamente el tiempo trabajado y envía notificaciones al usuario si alcanza su jornada laboral.
 \end{itemize}
 
-\subsection{Diagrama de clases}
-
 \begin{figure}[H]
     \centering
     \includegraphics[width=1\linewidth]{root/diagrama.png}
@@ -82,22 +80,61 @@ La aplicación cuenta con diferentes clases Java diferenciadas que dan respuesta
 
 \subsection{Base de datos}
 
-Además de las \textit{SharedPreferences}, para gestionar la persistencia de la aplicación se hace uso de una base de datos de tipo MySQL controlada desde un servidor PHP, que contiene las siguientes tablas:
+Además de las \textit{SharedPreferences}, para gestionar la persistencia de la aplicación se hace uso de una base de datos de tipo MySQL controlada desde un servidor PHP, que tal y como se muestra en el diagrama de la Figura \ref{fig:bd}, contiene las siguientes tablas:
 
 \begin{itemize}
-  \item \textbf{Tabla Fichajes}: almacena la información sobre los fichajes de los usuarios.
+  \item \textbf{Tabla \texttt{fichajes}}: almacena la información sobre los fichajes de los usuarios.
   \begin{itemize}
     \item \textbf{Atributos principales}: \texttt{id}, \texttt{fecha}, \texttt{hora\_entrada}, \texttt{hora\_salida}, \texttt{latitud}, \texttt{longitud}, \texttt{username}.
     \item \textbf{Índices}: \texttt{id} es un campo único y clave primaria.
   \end{itemize}
-  \item \textbf{Tabla Configuraciones}: almacena las configuraciones de horas de trabajo y días laborables.
-  \begin{itemize}
-    \item \textbf{Atributos principales}: \texttt{id}, \texttt{weekly\_hours}, \texttt{working\_days}.
-    \item \textbf{Índices}: \texttt{id} es un campo único y clave primaria.
-  \end{itemize}
-  \item \textbf{Tabla Usuarios}: almacena los usuarios registrados en la aplicación.
+  
+  \item \textbf{Tabla \texttt{users}}: almacena los usuarios registrados en la aplicación.
   \begin{itemize}
     \item \textbf{Atributos principales}: \texttt{id}, \texttt{username}, \texttt{password}.
     \item \textbf{Índices}: \texttt{username} es un campo único indexado para prevenir duplicados.
   \end{itemize}
+  
+  \item \textbf{Tabla \texttt{settings}}: almacena las configuraciones de horas de trabajo y recordatorios.
+  \begin{itemize}
+    \item \textbf{Atributos principales}: \texttt{id}, \texttt{weekly\_hours}, \texttt{working\_days}, \texttt{reminder\_enabled}, \texttt{reminder\_hour}, \texttt{reminder\_minute}.
+    \item \textbf{Índices}: \texttt{id} es un campo único y clave primaria.
+  \end{itemize}
+  
+  \item \textbf{Tabla \texttt{fcm\_tokens}}: almacena los tokens de notificaciones push para cada usuario.
+  \begin{itemize}
+    \item \textbf{Atributos principales}: \texttt{id}, \texttt{username}, \texttt{token}, \texttt{created\_at}, \texttt{updated\_at}.
+    \item \textbf{Índices}: \texttt{id} es un campo único y clave primaria.
+  \end{itemize}
+
+  \item \textbf{Tabla \texttt{user\_profiles}}: almacena información adicional del perfil del usuario.
+  \begin{itemize}
+    \item \textbf{Atributos principales}: \texttt{id}, \texttt{username}, \texttt{name}, \texttt{surname}, \texttt{birthdate}, \texttt{email}, \texttt{profile\_photo}.
+    \item \textbf{Índices}: \texttt{id} es un campo único y clave primaria.
+  \end{itemize}
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{root/bd.png}
+    \caption{Diagrama de la base de datos usada del proyecto}
+    \label{fig:bd}
+\end{figure}
+
+\subsection{Ficheros PHP usados en el servidor}
+
+Para ejecutar consultas sobre la base de datos MySQL mencionada anteriormente, así como realizar los correspondientes envíos de la mensajería FCM, se han cargado a través de SFTP los siguientes ficheros en la dirección de Internet \url{http://ec2-51-44-167-78.eu-west-3.compute.amazonaws.com/ffernandez032/WEB/}, disponibles para su consulta en el \href{https://github.com/ffernandezco/TicTacker/tree/main/server}{directorio \texttt{server} del repositorio de GitHub}:
+
+\begin{itemize}
+  \item \textbf{db\_connect.php}: recoge las credenciales de conexión a la base de datos. Por motivos de seguridad, se han ocultado algunos campos en el repositorio de GitHub. Modificando los ficheros y las direcciones de la conexión es posible usar otro servidor si así se desea.
+  \item \textbf{auth\_user.php}: verifica que un usuario y contraseña coinciden con el \textit{hash} almacenado en la base de datos para permitir su autenticación.
+  \item \textbf{fcm\_tokens.php}: se encarga de almacenar los tokens FCM de Firebase y de actualizar si es necesario el usuario al que está asociado cada uno.
+  \item \textbf{fichajes.php}: gestiona todas las operaciones relacionadas con los fichajes, incluyendo añadirlos, modificarlos o eliminarlos.
+  \item \textbf{firebase\_service\_account.json}: fichero extraído del gestor de cuentas de servicio IAM de Google que contiene los datos necesarios para enviar mensajes usando la mensajería Cloud Messagging de Firebase. Por motivos de seguridad, no se ha incluido en el repositorio de GitHub.
+  \item \textbf{jwt\_utils.php}: adaptación compilada del \href{https://github.com/firebase/php-jwt}{repositorio \texttt{firebase/php-jwt}} para gestionar la autenticación de Firebase desde PHP.
+  \item \textbf{notificar.php}: habilita una interfaz HTML que permite enviar una notificación a todos los usuarios con un token FCM almacenado en la base de datos. Está disponible de forma pública en la dirección \url{http://ec2-51-44-167-78.eu-west-3.compute.amazonaws.com/ffernandez032/WEB/notificar.php}.
+  \item \textbf{profile.php}: gestiona todas las operaciones relacionadas con los perfiles de usuario, como modificar o añadir el nombre, los apellidos, la foto de perfil o el correo electrónico.
+  \item \textbf{send\_notification\_v1.php}: permite enviar notificaciones a los usuarios a través del token usando Firebase Cloud Messagging (FCM).
+  \item \textbf{settings.php}: gestiona todas las operaciones relacionadas con las configuraciones, como la configuración de la jornada o el envío de notificaciones.
+  \item \textbf{users.php}: gestiona todas las operaciones relacionadas con los usuarios, como añadir un usuario o modificar la contraseña asociada.
 \end{itemize}
