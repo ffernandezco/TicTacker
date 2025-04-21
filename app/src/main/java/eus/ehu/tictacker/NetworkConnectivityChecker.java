@@ -34,6 +34,7 @@ public class NetworkConnectivityChecker {
         return instance;
     }
 
+    // Listener para notificar en caso de no tener Internet
     public void setNetworkStateListener(NetworkStateListener listener) {
         this.listener = listener;
         if (listener != null) {
@@ -62,6 +63,7 @@ public class NetworkConnectivityChecker {
         return isConnected;
     }
 
+    // Comprobación inicial de conexión a Internet
     private void checkInitialConnectionState() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             Network network = connectivityManager.getActiveNetwork();
@@ -87,6 +89,7 @@ public class NetworkConnectivityChecker {
             }
         }
 
+        // Si se pierde la conexión
         @Override
         public void onLost(@NonNull Network network) {
             isConnected = false;

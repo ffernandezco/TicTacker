@@ -128,6 +128,7 @@ public class SignupActivity extends AppCompatActivity {
         });
     }
 
+    // Mostrar selector de fechas para la fecha de nacimiento
     private void showDatePickerDialog() {
         final Calendar calendar = Calendar.getInstance();
 
@@ -194,6 +195,7 @@ public class SignupActivity extends AppCompatActivity {
         }
     }
 
+    // Validación de cuenta
     private boolean validateInputs(String username, String password, String confirmPassword,
                                    String name, String email, String birthdate) {
         // Validación de cuenta
@@ -202,6 +204,7 @@ public class SignupActivity extends AppCompatActivity {
             return false;
         }
 
+        // 4+ carácteres en la contraseña
         if (password.length() < 4) {
             editTextPassword.setError(getString(R.string.error_en_el_registro));
             return false;

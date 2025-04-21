@@ -23,7 +23,7 @@ public class NoInternetActivity extends AppCompatActivity implements NetworkConn
 
         connectivityChecker = NetworkConnectivityChecker.getInstance(this);
 
-        // Get the activity to return to when connection is available
+        // Volver en caso de que se recupere la conexión a Internet
         returnActivity = getIntent().getStringExtra("return_activity");
         if (returnActivity == null) {
             returnActivity = MainActivity.class.getName();
@@ -53,6 +53,7 @@ public class NoInternetActivity extends AppCompatActivity implements NetworkConn
         }
     }
 
+    // Si vuelve Internet, volver atrás
     private void returnToPreviousActivity() {
         try {
             Class<?> activityClass = Class.forName(returnActivity);
@@ -61,7 +62,7 @@ public class NoInternetActivity extends AppCompatActivity implements NetworkConn
             startActivity(intent);
             finish();
         } catch (ClassNotFoundException e) {
-            // Fallback to MainActivity
+            // Ir a mainActivity si no se encuentra
             Intent intent = new Intent(this, MainActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
             startActivity(intent);

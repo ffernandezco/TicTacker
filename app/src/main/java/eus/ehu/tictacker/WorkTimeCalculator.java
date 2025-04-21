@@ -138,6 +138,7 @@ public class WorkTimeCalculator {
         return timeStr;
     }
 
+    // Obtener fichaje activo
     public static Fichaje getCurrentActiveFichaje(List<Fichaje> fichajes) {
         if (fichajes == null || fichajes.isEmpty()) {
             return null;

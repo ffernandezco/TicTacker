@@ -90,6 +90,7 @@ public class EditFichajeDialog extends DialogFragment {
         return view;
     }
 
+    // Mostrar el selector de hora al editar horario de un fichaje
     private void showTimePickerDialog(boolean isEntrada) {
         Calendar calendar = Calendar.getInstance();
         try {
@@ -133,6 +134,7 @@ public class EditFichajeDialog extends DialogFragment {
         timePickerDialog.show();
     }
 
+    // Actualizar el fichaje en la base de datos
     private void updateFichajeInDb(DatabaseHelper.BooleanCallback callback) {
         // Verificar si la hora de salida es "Pendiente" y establecerla como null
         String salidaText = tvSalida.getText().toString();
@@ -142,7 +144,7 @@ public class EditFichajeDialog extends DialogFragment {
             fichaje.horaSalida = salidaText;
         }
 
-        // Actualizar ambos campos (entrada y salida) usando el nuevo DatabaseHelper
+        // Actualizar ambos campos (entrada y salida) usando DatabaseHelper
         databaseHelper.actualizarFichajeCompleto(fichaje, callback);
     }
 

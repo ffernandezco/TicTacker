@@ -59,7 +59,7 @@ public class FichajeDetailsDialog extends DialogFragment implements EditFichajeD
         View view = inflater.inflate(R.layout.dialog_fichaje_details, container, false);
         databaseHelper = new DatabaseHelper(requireContext());
 
-        // Initializar componentes y configurar mapa
+        // Inicializar componentes y configurar mapa
         mapView = view.findViewById(R.id.mapView);
         if (mapView != null) {
             mapView.setTileSource(TileSourceFactory.MAPNIK);
@@ -99,8 +99,9 @@ public class FichajeDetailsDialog extends DialogFragment implements EditFichajeD
         return view;
     }
 
+    // Iniciar mapa de OSMdroid / Open Street Map
     private void setupMap() {
-        if (fichaje.latitud == 0.0 && fichaje.longitud == 0.0) { //Comprobar que la ubicación existe
+        if (fichaje.latitud == 0.0 && fichaje.longitud == 0.0) { // Comprobar que la ubicación existe
             mapView.setVisibility(View.GONE);
             return;
         }
@@ -143,6 +144,7 @@ public class FichajeDetailsDialog extends DialogFragment implements EditFichajeD
         mapView.invalidate();
     }
 
+    // Actualizar vista en caso de haber algún cambio
     private void updateUI(View view) {
         Context context = view.getContext();
         TextView tvFecha = view.findViewById(R.id.tvDetailFecha);
@@ -225,6 +227,7 @@ public class FichajeDetailsDialog extends DialogFragment implements EditFichajeD
         //}
     }
 
+    // Verificar que hay permisos de ubicación
     private boolean hasLocationPermissions() {
         return ContextCompat.checkSelfPermission(requireContext(),
                 Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||

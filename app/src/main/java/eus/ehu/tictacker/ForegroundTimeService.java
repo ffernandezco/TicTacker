@@ -56,7 +56,7 @@ public class ForegroundTimeService extends Service {
             if (action != null) {
                 switch (action) {
                     case "START_FOREGROUND":
-                        startForegroundService();
+                        startForegroundService(); // Iniciar servicio en primer plano
                         break;
                     case "STOP_FOREGROUND":
                         stopForegroundService();
@@ -69,6 +69,7 @@ public class ForegroundTimeService extends Service {
         return START_STICKY;
     }
 
+    // Servicio en primer plano - Foreground
     private void startForegroundService() {
         if (isRunning) return;
 
@@ -78,6 +79,7 @@ public class ForegroundTimeService extends Service {
         updateRunnable = new Runnable() {
             @Override
             public void run() {
+                // Actualizar notificación persistente
                 updateNotification();
                 handler.postDelayed(this, UPDATE_INTERVAL);
             }
@@ -98,6 +100,7 @@ public class ForegroundTimeService extends Service {
         isRunning = true;
     }
 
+    // Detener servicio en primer plano
     private void stopForegroundService() {
         isRunning = false;
         handler.removeCallbacks(updateRunnable);
@@ -111,6 +114,7 @@ public class ForegroundTimeService extends Service {
         stopSelf();
     }
 
+    // Actualización dinámica de la notificación persistente
     private void updateNotification() {
         if (!isRunning) return;
 
@@ -140,6 +144,7 @@ public class ForegroundTimeService extends Service {
         });
     }
 
+    // Construir notificación mostrando el tiempo de jornada
     private Notification buildNotification(String timeWorked, String timeRemaining) {
         // Crear un intent para ir a MainActivity
         Intent notificationIntent = new Intent(this, MainActivity.class);
@@ -163,6 +168,7 @@ public class ForegroundTimeService extends Service {
         return builder.build();
     }
 
+    // Canal de notificación
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(

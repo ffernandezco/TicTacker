@@ -171,6 +171,7 @@ public class SettingsFragment extends Fragment {
         btnDecreaseReminderMinute = view.findViewById(R.id.btnDecreaseReminderMinute);
     }
 
+    // Configurar los selectores para las horas
     private void setupNumberPickers() {
         btnIncreaseHours.setOnClickListener(v -> {
             if (selectedHours < MAX_HOURS) {
@@ -219,6 +220,7 @@ public class SettingsFragment extends Fragment {
         tvMinutesValue.setText(String.format(Locale.getDefault(), "%02d", selectedMinutes));
     }
 
+    // Añadir recordatorios de fichar con alarma programada
     private void setupReminderPickers() {
         // Configurar listeners para los botones de hora
         btnIncreaseReminderHour.setOnClickListener(v -> {
@@ -268,7 +270,7 @@ public class SettingsFragment extends Fragment {
             updateReminderMinuteDisplay();
         });
 
-        // Configurar el toggle del recordatorio
+        // Configurar el toggle del recordatorio para activar / desactivar
         toggleReminder.setOnCheckedChangeListener((buttonView, isChecked) -> {
             btnIncreaseReminderHour.setEnabled(isChecked);
             btnDecreaseReminderHour.setEnabled(isChecked);
@@ -303,6 +305,7 @@ public class SettingsFragment extends Fragment {
         tvReminderMinuteValue.setText(String.format(Locale.getDefault(), "%02d", reminderMinute));
     }
 
+    // Cargar la configuración del usuario guardada en la base de datos remota
     private void loadSavedSettings() {
         SharedPreferences prefs = requireActivity().getSharedPreferences("AppPrefs", requireContext().MODE_PRIVATE);
         String lang = prefs.getString("language", "es");
@@ -347,6 +350,7 @@ public class SettingsFragment extends Fragment {
         }
     }
 
+    // Guardar configuración tanto en SharedPreferences como en la base de datos remota
     private void saveSettings() {
         String selectedLanguage = spinnerLanguage.getSelectedItemPosition() == 0 ? "es" : "en";
         float weeklyHours = selectedHours + (selectedMinutes / 60.0f);
@@ -419,6 +423,7 @@ public class SettingsFragment extends Fragment {
         Toast.makeText(requireContext(), getString(R.string.settings_updated), Toast.LENGTH_LONG).show();
     }
 
+    // Eliminar los fichajes de un usuario de la base de datos
     private void showDeleteConfirmationDialog() {
         new androidx.appcompat.app.AlertDialog.Builder(requireContext())
                 .setTitle(getString(R.string.confirm_delete_title))
@@ -438,6 +443,7 @@ public class SettingsFragment extends Fragment {
                 .show();
     }
 
+    // Mostrar logo personalizado en caso de haberlo elegido
     private void loadCustomLogo() {
         SharedPreferences prefs = requireActivity().getSharedPreferences("AppPrefs", requireContext().MODE_PRIVATE);
         String logoUriString = prefs.getString("custom_logo_uri", null);
@@ -475,7 +481,7 @@ public class SettingsFragment extends Fragment {
                 Toast.makeText(requireContext(), R.string.logo_changed, Toast.LENGTH_SHORT).show();
             } catch (Exception e) {
                 e.printStackTrace();
-                Toast.makeText(requireContext(), "Error saving logo permission", Toast.LENGTH_SHORT).show();
+                Toast.makeText(requireContext(), "Error guardando el logotipo personalizado", Toast.LENGTH_SHORT).show();
             }
         }
     }

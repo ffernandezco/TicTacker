@@ -48,6 +48,7 @@ public class FichajeDetailsFragment extends Fragment implements EditFichajeDialo
             int fichajeId = getArguments().getInt("fichaje_id", -1);
             String username = databaseHelper.getCurrentUsername(requireContext());
 
+            // Comprobar si se tienen elementos cacheados y sino cachear
             if (cachedFichaje != null && cachedFichaje.id == fichajeId) {
                 fichaje = cachedFichaje;
                 updateUI();
@@ -110,6 +111,7 @@ public class FichajeDetailsFragment extends Fragment implements EditFichajeDialo
         }
     }
 
+    // Configurar vista del mapa con OSMdroid
     private void configureMapView() {
         if (mapView != null) {
             mapView.setTileSource(TileSourceFactory.MAPNIK);
@@ -119,6 +121,7 @@ public class FichajeDetailsFragment extends Fragment implements EditFichajeDialo
         }
     }
 
+    // Actualizar la vista en caso de que haya algún cambio
     private void updateUI() {
         if (getView() == null) return;
 
@@ -145,6 +148,7 @@ public class FichajeDetailsFragment extends Fragment implements EditFichajeDialo
         }
     }
 
+    // Muestra el mapa con la ubicación obtenida del fichaje si está disponible
     private void updateMapWithLocation(Fichaje displayFichaje) {
         if (mapView != null && displayFichaje != null && (displayFichaje.latitud != 0.0 || displayFichaje.longitud != 0.0)) {
             // Poner el mapa en la ubicación del fichaje
@@ -165,6 +169,8 @@ public class FichajeDetailsFragment extends Fragment implements EditFichajeDialo
         }
     }
 
+    // Intent para abrir en app de mapas propia del dispositivo
+    // e.g. Google Maps
     private void openMap() {
         Fichaje displayFichaje = fichaje != null ? fichaje : defaultFichaje;
 
@@ -176,6 +182,7 @@ public class FichajeDetailsFragment extends Fragment implements EditFichajeDialo
         }
     }
 
+    // Botón para editar el fichaje guardado
     private void showEditDialog() {
         if (fichaje != null) {
             EditFichajeDialog editDialog = new EditFichajeDialog(fichaje, this);
@@ -183,6 +190,7 @@ public class FichajeDetailsFragment extends Fragment implements EditFichajeDialo
         }
     }
 
+    // Actualizar caché y vista en caso de que haya algún cambio
     @Override
     public void onFichajeUpdated() {
         if (fichaje != null) {

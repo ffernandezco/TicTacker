@@ -6,6 +6,9 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.util.Log;
 
+// Se utiliza para configurar las alarmas de recordatorios de fichaje tras el reinicio del dispositivo
+// https://developer.android.com/develop/background-work/services/alarms/schedule
+
 public class BootReceiver extends BroadcastReceiver {
     private static final String TAG = "BootReceiver";
 

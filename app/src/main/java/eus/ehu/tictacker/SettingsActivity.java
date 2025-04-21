@@ -220,6 +220,7 @@ public class SettingsActivity extends AppCompatActivity {
         }
     }
 
+    // Cargar configuraciones guardadas
     private void loadSavedSettings() {
         SharedPreferences prefs = getSharedPreferences("AppPrefs", MODE_PRIVATE);
         String lang = prefs.getString("language", "es");
@@ -245,6 +246,7 @@ public class SettingsActivity extends AppCompatActivity {
         });
     }
 
+    // Guardar configuración de idioma
     private void saveLanguagePreference(String lang) {
         SharedPreferences prefs = getSharedPreferences("AppPrefs", MODE_PRIVATE);
         SharedPreferences.Editor editor = prefs.edit();
@@ -260,6 +262,7 @@ public class SettingsActivity extends AppCompatActivity {
         getResources().updateConfiguration(config, getResources().getDisplayMetrics());
     }
 
+    // Reiniciar si se modifica la configuración
     private void restartApp() {
         Intent intent = new Intent(this, MainActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
@@ -267,6 +270,7 @@ public class SettingsActivity extends AppCompatActivity {
         Toast.makeText(this, getString(R.string.settings_updated), Toast.LENGTH_LONG).show();
     }
 
+    // Confirmación al eliminar todos los fichajes
     private void showDeleteConfirmationDialog() {
         new androidx.appcompat.app.AlertDialog.Builder(this)
                 .setTitle(getString(R.string.confirm_delete_title))

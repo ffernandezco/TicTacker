@@ -126,6 +126,7 @@ public class NotificationHelper {
         editor.apply();
     }
 
+    // Comprobar permisos de notificaciones
     public boolean areNotificationsEnabled() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             return NotificationManagerCompat.from(context).areNotificationsEnabled() &&

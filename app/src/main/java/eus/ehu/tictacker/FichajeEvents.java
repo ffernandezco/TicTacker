@@ -12,6 +12,7 @@ public class FichajeEvents {
         listener = l;
     }
 
+    // Notificar cambios en el fichaje
     public static void notifyFichajeChanged() {
         if (listener != null) {
             listener.onFichajeChanged();

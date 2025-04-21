@@ -15,6 +15,7 @@ public class ClockInReminderService {
     private static final String TAG = "ClockInReminderService";
     private static final int REMINDER_REQUEST_CODE = 1234;
 
+    // Programar alarma para recordar al usuario fichar
     public static void scheduleReminder(Context context) {
         SharedPreferences prefs = context.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE);
         boolean reminderEnabled = prefs.getBoolean("reminder_enabled", false);
@@ -33,6 +34,8 @@ public class ClockInReminderService {
         calendar.set(Calendar.HOUR_OF_DAY, reminderHour);
         calendar.set(Calendar.MINUTE, reminderMinute);
         calendar.set(Calendar.SECOND, 0);
+
+        // Si ha expirado, programar el recordatorio para el siguiente día
 
         if (calendar.getTimeInMillis() <= System.currentTimeMillis()) {
             calendar.add(Calendar.DAY_OF_YEAR, 1);

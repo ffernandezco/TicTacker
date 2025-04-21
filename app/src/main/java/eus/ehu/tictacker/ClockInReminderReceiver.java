@@ -11,12 +11,13 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
+// Recibe las alarmas y genera una notificación para recordar fichar
 public class ClockInReminderReceiver extends BroadcastReceiver {
     private static final String TAG = "ClockInReminderReceiver";
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        Log.d(TAG, "Alarma recivida en " + new Date().toString());
+        Log.d(TAG, "Alarma recibida en " + new Date().toString());
 
         DatabaseHelper dbHelper = new DatabaseHelper(context);
         String username = dbHelper.getCurrentUsername(context);
@@ -37,7 +38,7 @@ public class ClockInReminderReceiver extends BroadcastReceiver {
                     }
                 }
 
-                Log.d(TAG, "Check results - hasClockInToday: " + hasClockInToday +
+                Log.d(TAG, "Resultado - hasClockInToday: " + hasClockInToday +
                         ", hasActiveClockIn: " + hasActiveClockIn);
 
                 // Enviar notificación si no hay fichajes hoy o hay uno activo sin finalizar

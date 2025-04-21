@@ -22,7 +22,7 @@ import java.util.Map;
 
 public class DatabaseWorker extends Worker {
     private static final String TAG = "DatabaseWorker";
-    private static final String BASE_URL = "http://ec2-51-44-167-78.eu-west-3.compute.amazonaws.com/ffernandez032/WEB/";
+    private static final String BASE_URL = "http://ec2-51-44-167-78.eu-west-3.compute.amazonaws.com/ffernandez032/WEB/"; // Dirección URL / IP del servidor
 
     public DatabaseWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
@@ -72,6 +72,7 @@ public class DatabaseWorker extends Worker {
         }
     }
 
+    // Realiza la petición HTTP POST al servidor
     private String makeHttpRequest(String endpoint, String action, Map<String, String> parameters) throws IOException, JSONException {
         HttpURLConnection urlConnection = null;
         BufferedReader reader = null;
@@ -85,24 +86,23 @@ public class DatabaseWorker extends Worker {
             urlConnection.setReadTimeout(5000);
             urlConnection.setDoOutput(true);
 
-            // All PHP endpoints expect JSON data
+            // Todos los PHP de la app devuelven objetos JSON
             urlConnection.setRequestProperty("Content-Type", "application/json");
 
-            // Create JSON object from parameters
+            // Crear objetos JSON desde los parámetros
             JSONObject jsonParams = new JSONObject();
             for (Map.Entry<String, String> entry : parameters.entrySet()) {
                 jsonParams.put(entry.getKey(), entry.getValue());
             }
 
-            // Add action to JSON if available
+            // Añadir acción al JSON
             if (action != null && !action.isEmpty()) {
                 jsonParams.put("action", action);
             }
 
-            // Log the JSON being sent for debugging
-            Log.d(TAG, "Sending to " + endpoint + ": " + jsonParams.toString());
+            Log.d(TAG, "Enviando a " + endpoint + ": " + jsonParams.toString());
 
-            // Write JSON to output stream
+            // Escribir salida JSON
             PrintWriter out = new PrintWriter(urlConnection.getOutputStream());
             out.print(jsonParams.toString());
             out.close();
@@ -118,8 +118,7 @@ public class DatabaseWorker extends Worker {
                 }
                 response = responseBuilder.toString();
 
-                // Log response for debugging
-                Log.d(TAG, "Response from " + endpoint + ": " + response);
+                Log.d(TAG, "Respuesta de " + endpoint + ": " + response);
             } else {
                 throw new IOException("Código de respuesta HTTP: " + statusCode);
             }

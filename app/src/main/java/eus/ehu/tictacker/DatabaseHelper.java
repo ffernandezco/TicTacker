@@ -65,6 +65,7 @@ public class DatabaseHelper {
     }
 
     // Métodos adaptados para usar WorkManager
+    // Añade datos del fichaje a la base de datos a través de la API
     public void insertarFichaje(Fichaje fichaje, BooleanCallback callback) {
         Data inputData = new Data.Builder()
                 .putString("endpoint", "fichajes.php")
@@ -86,6 +87,7 @@ public class DatabaseHelper {
         });
     }
 
+    // Obtiene todos los datos de fichajes de un usuario concreto
     public void obtenerTodosLosFichajes(String username, FichajesCallback callback) {
         Data inputData = new Data.Builder()
                 .putString("endpoint", "fichajes.php")
@@ -105,6 +107,7 @@ public class DatabaseHelper {
         });
     }
 
+    // Actualiza un fichaje ya presente en la base de datos
     public void actualizarFichaje(Fichaje fichaje, BooleanCallback callback) {
         Data inputData = new Data.Builder()
                 .putString("endpoint", "fichajes.php")
@@ -125,6 +128,7 @@ public class DatabaseHelper {
         });
     }
 
+    // Devuelve el último fichaje de un día y usuario determinados
     public void obtenerUltimoFichajeDelDia(String fecha, String username, FichajeCallback callback) {
         Data inputData = new Data.Builder()
                 .putString("endpoint", "fichajes.php")
@@ -146,6 +150,7 @@ public class DatabaseHelper {
         });
     }
 
+    // Devuelve todos los fichajes de un usuario en la fecha actual
     public void obtenerFichajesDeHoy(String username, FichajesCallback callback) {
         String fechaActual = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
 
@@ -168,6 +173,7 @@ public class DatabaseHelper {
         });
     }
 
+    // Guardar la configuración del usuario en la base de datos
     public void saveSettings(float weeklyHours, int workingDays, boolean reminderEnabled,
                              int reminderHour, int reminderMinute, BooleanCallback callback) {
         Data inputData = new Data.Builder()
@@ -207,6 +213,7 @@ public class DatabaseHelper {
         });
     }
 
+    // Obtener la configuración del usuario de la base de datos
     public void getSettings(SettingsCallback callback) {
         Data inputData = new Data.Builder()
                 .putString("endpoint", "settings.php")
@@ -248,7 +255,8 @@ public class DatabaseHelper {
         });
     }
 
-
+    // Elimina todos los fichajes de un usuario concreto de la base de datos
+    // Usado principalmente con fines de desarrollo pero mantenido para usarse con botón de borrar en la configuración
     public void deleteAllFichajes(String username, BooleanCallback callback) {
         Data inputData = new Data.Builder()
                 .putString("endpoint", "fichajes.php")
@@ -265,6 +273,7 @@ public class DatabaseHelper {
         });
     }
 
+    // Actualizar todos los datos de un fichaje determinado
     public void actualizarFichajeCompleto(Fichaje fichaje, BooleanCallback callback) {
         Data inputData = new Data.Builder()
                 .putString("endpoint", "fichajes.php")
@@ -286,6 +295,7 @@ public class DatabaseHelper {
         });
     }
 
+    // Comprobar si un usuario y contraseña son correctos
     public void validarUsuario(String username, String password, BooleanCallback callback) {
         Data inputData = new Data.Builder()
                 .putString("endpoint", "auth_user.php")
@@ -302,6 +312,7 @@ public class DatabaseHelper {
         });
     }
 
+    // Verificar si un usuario concreto está presente en la base de datos
     public void userExists(String username, BooleanCallback callback) {
         Data inputData = new Data.Builder()
                 .putString("endpoint", "users.php")
@@ -322,6 +333,7 @@ public class DatabaseHelper {
         });
     }
 
+    // Registrar un nuevo usuario en la base de datos
     public void addUser(String username, String password, BooleanCallback callback) {
         Data inputData = new Data.Builder()
                 .putString("endpoint", "users.php")
@@ -339,6 +351,9 @@ public class DatabaseHelper {
         });
     }
 
+    // Obtener información de perfil de un usuario
+    // Nota: no se refiere al usuario como tal sino a los campos adicionales de la pestaña de perfil
+    // e.g. nombre, apellidos, fecha de nacimiento, foto de perfil, etc.
     public void getProfile(String username, ProfileCallback callback) {
         Data inputData = new Data.Builder()
                 .putString("endpoint", "profile.php")
@@ -376,6 +391,9 @@ public class DatabaseHelper {
         });
     }
 
+    // Actualizar un perfil concreto
+    // Nota: no se refiere al usuario como tal sino a los campos adicionales de la pestaña de perfil
+    // e.g. nombre, apellidos, fecha de nacimiento, foto de perfil, etc.
     public void updateProfile(UserProfile profile, BooleanCallback callback) {
         Data inputData = new Data.Builder()
                 .putString("endpoint", "profile.php")
@@ -397,6 +415,7 @@ public class DatabaseHelper {
         });
     }
 
+    // Obtener los datos de un fichaje concreto a partir de su ID
     public void obtenerFichajePorId(int fichajeId, String username, FichajeCallback callback) {
         Data inputData = new Data.Builder()
                 .putString("endpoint", "fichajes.php")
@@ -418,6 +437,7 @@ public class DatabaseHelper {
         });
     }
 
+    // Verificar que la contraseña es correcta
     public void validateCurrentPassword(String username, String password, BooleanCallback callback) {
         Data inputData = new Data.Builder()
                 .putString("endpoint", "auth_user.php")
@@ -434,6 +454,7 @@ public class DatabaseHelper {
         });
     }
 
+    // Actualizar contraseña de un usuario
     public void updateUserPassword(String username, String newPassword, BooleanCallback callback) {
         Data inputData = new Data.Builder()
                 .putString("endpoint", "users.php")
@@ -451,6 +472,7 @@ public class DatabaseHelper {
         });
     }
 
+    // Actualizar el token de mensajería FCM
     public void updateFCMToken(String username, String token, BooleanCallback callback) {
         Data inputData = new Data.Builder()
                 .putString("endpoint", "fcm_tokens.php")
@@ -505,6 +527,7 @@ public class DatabaseHelper {
         });
     }
 
+    // Genera objetos Fichaje a partir de la información obtenida de la API
     private List<Fichaje> parseFichajesFromResponse(JsonObject response, String username) {
         List<Fichaje> result = new ArrayList<>();
         if (response.has("data")) {
@@ -532,6 +555,7 @@ public class DatabaseHelper {
         return fichaje;
     }
 
+    // Conocer el nombre de usuario desde SharedPreferences tras haber iniciado sesión
     public String getCurrentUsername(Context context) {
         SharedPreferences sharedPreferences = context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE);
         return sharedPreferences.getString("usuario_actual", "unknown_user");

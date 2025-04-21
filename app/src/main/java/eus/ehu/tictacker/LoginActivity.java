@@ -75,6 +75,7 @@ public class LoginActivity extends AppCompatActivity {
         });
     }
 
+    // Revisar que se tenga Internet para conectar con la BD remota
     private void checkNetworkConnection() {
         connectivityChecker.setNetworkStateListener(new NetworkConnectivityChecker.NetworkStateListener() {
             @Override

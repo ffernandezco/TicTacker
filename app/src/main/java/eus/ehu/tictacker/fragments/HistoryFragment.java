@@ -83,6 +83,7 @@ public class HistoryFragment extends Fragment implements FichajeDetailsDialog.On
         //dbHelper.close();
     }
 
+    // Importar y exportar fichajes en formato CSV
     private void setupActivityResultLaunchers() {
         importFileLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
@@ -115,6 +116,7 @@ public class HistoryFragment extends Fragment implements FichajeDetailsDialog.On
         actualizarLista();
     }
 
+    // Añadir fichajes a la lista en caso de haber algún cambio
     private void actualizarLista() {
         String username = dbHelper.getCurrentUsername(requireContext());
         dbHelper.obtenerTodosLosFichajes(username, fichajes -> {
@@ -130,6 +132,7 @@ public class HistoryFragment extends Fragment implements FichajeDetailsDialog.On
         });
     }
 
+    // Abrir FichajeDetailsFragment al pulsar sobre uno de los fichajes guardados
     private void showFichajeDetails(Fichaje fichaje) {
         // Obtener el ID del fichaje para mostrar sus datos
         Bundle bundle = new Bundle();
@@ -146,6 +149,7 @@ public class HistoryFragment extends Fragment implements FichajeDetailsDialog.On
         actualizarLista();
     }
 
+    // Exportar historial de fichajes a CSV
     private void exportHistory() {
         Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
@@ -158,6 +162,7 @@ public class HistoryFragment extends Fragment implements FichajeDetailsDialog.On
         exportFileLauncher.launch(intent);
     }
 
+    // Importar fichajes de fichero CSV
     private void importHistory() {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
@@ -166,6 +171,7 @@ public class HistoryFragment extends Fragment implements FichajeDetailsDialog.On
         importFileLauncher.launch(intent);
     }
 
+    // Extraer todos los fichajes del usuario de la base de datos y guardar en un fichero CSV unificado
     private void processExportFile(Uri uri) {
         String username = dbHelper.getCurrentUsername(requireContext());
         dbHelper.obtenerTodosLosFichajes(username, fichajes -> {
@@ -198,6 +204,8 @@ public class HistoryFragment extends Fragment implements FichajeDetailsDialog.On
         });
     }
 
+    // Añadir fichajes de un CSV a la base de datos
+    // Formato: ID,Fecha,Hora Entrada,Hora Salida,Latitud,Longitud,Username
     private void processImportFile(Uri uri) {
         try {
             InputStream inputStream = requireContext().getContentResolver().openInputStream(uri);

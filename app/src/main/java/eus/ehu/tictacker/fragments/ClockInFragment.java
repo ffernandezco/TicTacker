@@ -71,6 +71,7 @@ public class ClockInFragment extends Fragment {
     private ForegroundTimeService timeService;
     private boolean serviceBound = false;
 
+    // Conector del servicio para trabajo en primer plano
     private ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -110,7 +111,7 @@ public class ClockInFragment extends Fragment {
 
         btnFichar.setOnClickListener(v -> checkLocationPermissionAndRegister());
 
-        loadCachedData();
+        loadCachedData(); // Cargar datos de caché
         actualizarEstadoUI();
 
         timerRunnable = new Runnable() {
@@ -165,6 +166,8 @@ public class ClockInFragment extends Fragment {
         FichajeEvents.setListener(null);
     }
 
+    // Comprobar que se cuenta con permiso para acceder a la localización
+    // Si no se otorga, no se añade al fichaje
     private void checkLocationPermissionAndRegister() {
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -176,6 +179,8 @@ public class ClockInFragment extends Fragment {
         }
     }
 
+    // Comprobar que se cuenta con permisos de lectura / escritura para el calendario
+    // Se deben otorgar para guardar los fichajes como eventos
     private void checkCalendarPermissionAndRegister() {
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.WRITE_CALENDAR)
                 != PackageManager.PERMISSION_GRANTED ||
@@ -185,7 +190,7 @@ public class ClockInFragment extends Fragment {
                     new String[]{
                             Manifest.permission.WRITE_CALENDAR,
                             Manifest.permission.READ_CALENDAR,
-                            Manifest.permission.GET_ACCOUNTS
+                            Manifest.permission.GET_ACCOUNTS // Permiso de cuentas para localizar calendario
                     },
                     CALENDAR_PERMISSION_REQUEST_CODE);
         } else {
@@ -193,6 +198,7 @@ public class ClockInFragment extends Fragment {
         }
     }
 
+    // Obtener la obicación de los fichajes
     private void getCurrentLocationAndRegister() {
         if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -297,6 +303,7 @@ public class ClockInFragment extends Fragment {
         });
     }
 
+    // Actualizar la interfaz
     private void actualizarEstadoUI() {
         String username = dbHelper.getCurrentUsername(requireContext());
         dbHelper.obtenerFichajesDeHoy(username, new DatabaseHelper.FichajesCallback() {
@@ -315,7 +322,6 @@ public class ClockInFragment extends Fragment {
                         String timeWorkedStr = WorkTimeCalculator.formatTime(timeWorked[0], timeWorked[1]);
                         String timeRemainingStr = WorkTimeCalculator.formatTime(timeRemaining[0], timeRemaining[1]);
 
-                        // Declarar como final las variables que se usarán en el lambda
                         final boolean[] isClockedIn = {false};
                         final String[] lastClockInTime = {""};
 
@@ -354,6 +360,7 @@ public class ClockInFragment extends Fragment {
         });
     }
 
+    // Completar salida, añadiendo el fichaje y añadiendo al calendario un evento
     private void completeClockOut(Fichaje fichaje, String horaSalida, double latitude, double longitude) {
         fichaje.horaSalida = horaSalida;
         fichaje.latitud = latitude;
@@ -369,14 +376,13 @@ public class ClockInFragment extends Fragment {
                             Toast.LENGTH_SHORT).show();
                     checkForActiveClockInsAndStopService(fichaje);
 
-                    // Añadir al calendario un único evento que abarca desde la entrada hasta la salida
+                    // Añadir un evento al calendario
                     try {
                         String username = dbHelper.getCurrentUsername(requireContext());
                         String eventTitle = getString(R.string.work_session_title, username);
                         String eventDescription = getString(R.string.work_session_description,
                                 fichaje.horaEntrada, horaSalida);
 
-                        // Crear un evento que abarque desde la entrada hasta la salida
                         addWorkSessionToCalendar(fichaje.fecha, fichaje.horaEntrada, horaSalida,
                                 eventTitle, eventDescription);
                     } catch (Exception e) {
@@ -393,12 +399,13 @@ public class ClockInFragment extends Fragment {
         });
     }
 
+    // Añade el turno al calendario propio del móvil
     private long addWorkSessionToCalendar(String date, String startTime, String endTime,
                                           String title, String description) {
         try {
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
 
-            // Parse start and end times
+            // Obtener comienzo y salida del fichaje
             Date eventStartDate = sdf.parse(date + " " + startTime);
             Date eventEndDate = sdf.parse(date + " " + endTime);
 
@@ -407,12 +414,12 @@ public class ClockInFragment extends Fragment {
             long startTimeMillis = eventStartDate.getTime();
             long endTimeMillis = eventEndDate.getTime();
 
-            // If end time is before start time (overnight shift), add a day to end time
+            // Se añade un día más en caso de ue se modifique la fecha (turnos nocturnos)
             if (endTimeMillis < startTimeMillis) {
-                endTimeMillis += 24 * 60 * 60 * 1000; // Add a day
+                endTimeMillis += 24 * 60 * 60 * 1000; // Sumar 1 día
             }
 
-            // Find an editable calendar
+            // Buscar un calendario con permisos de escritura
             long calendarId = getCalendarId();
             if (calendarId == -1) {
                 Log.e(TAG, "No hay ningún calendario editable");
@@ -431,6 +438,7 @@ public class ClockInFragment extends Fragment {
 
             // Hacer que se muestre como ocupado
             values.put(CalendarContract.Events.AVAILABILITY, CalendarContract.Events.AVAILABILITY_BUSY);
+
             // Evitar alerta
             values.put(CalendarContract.Events.HAS_ALARM, 0);
 
@@ -505,6 +513,7 @@ public class ClockInFragment extends Fragment {
         return createTicTackerCalendar();
     }
 
+    // Buscar el calendario correcto
     private long findTicTackerCalendar() {
         String[] projection = new String[] {
                 CalendarContract.Calendars._ID,
@@ -532,6 +541,7 @@ public class ClockInFragment extends Fragment {
         return -1;
     }
 
+    // Crear un nuevo calendario en caso de que no haya ninguno editable disponible
     private long createTicTackerCalendar() {
         // Obtener las cuentas disponibles del AccountManager
         try {
@@ -586,6 +596,7 @@ public class ClockInFragment extends Fragment {
         return -1;
     }
 
+    // Mensaje de confirmación si aún no se ha alcanzado el tiempo de jornada establecido
     private void showConfirmClockOutDialog(Fichaje fichaje, String horaSalida, double latitude, double longitude) {
         new androidx.appcompat.app.AlertDialog.Builder(requireContext())
                 .setMessage(R.string.confirm_clock_out_message)
@@ -597,6 +608,7 @@ public class ClockInFragment extends Fragment {
                 .show();
     }
 
+    // Comprobar si se ha alcanzado el tiempo completo de jornada
     private void checkWorkTimeCompleted() {
         long currentTime = System.currentTimeMillis();
         if (currentTime - lastNotificationCheckTime < 5000) {
@@ -636,6 +648,7 @@ public class ClockInFragment extends Fragment {
         });
     }
 
+    // Detener el servicio en primer plano y la notificación persistente
     private void checkForActiveClockInsAndStopService(Fichaje currentFichaje) {
         String username = dbHelper.getCurrentUsername(requireContext());
         dbHelper.obtenerFichajesDeHoy(username, new DatabaseHelper.FichajesCallback() {
@@ -659,6 +672,7 @@ public class ClockInFragment extends Fragment {
         });
     }
 
+    // Arrancar el servicio en primer plano y mostrar la notificación durante el fichaje
     private void startForegroundService() {
         Intent serviceIntent = new Intent(requireContext(), ForegroundTimeService.class);
         serviceIntent.setAction("START_FOREGROUND");
@@ -670,12 +684,14 @@ public class ClockInFragment extends Fragment {
         }
     }
 
+    // Detener servicio en primer plano
     private void stopForegroundService() {
         Intent serviceIntent = new Intent(requireContext(), ForegroundTimeService.class);
         serviceIntent.setAction("STOP_FOREGROUND");
         requireContext().startService(serviceIntent);
     }
 
+    // Cargar datos cacheados
     private void loadCachedData() {
         SharedPreferences prefs = requireContext().getSharedPreferences("ClockCache", Context.MODE_PRIVATE);
         String cachedTimeWorked = prefs.getString("lastTimeWorked", null);

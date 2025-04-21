@@ -24,7 +24,7 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 public class ApiClient {
-    private static final String BASE_URL = "http://ec2-51-44-167-78.eu-west-3.compute.amazonaws.com/ffernandez032/WEB/";
+    private static final String BASE_URL = "http://ec2-51-44-167-78.eu-west-3.compute.amazonaws.com/ffernandez032/WEB/"; // Dirección URL / IP del servidor
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
 
     private static ApiClient instance;
@@ -72,6 +72,7 @@ public class ApiClient {
         void onFailure(Exception e);
     }
 
+    // Realiza llamadas asíncronas a la base de datos para no impedir visualización
     public void postAsync(String endpoint, Object data, ApiCallback<JsonObject> callback) {
         executorService.execute(() -> {
             try {
@@ -83,6 +84,7 @@ public class ApiClient {
         });
     }
 
+    // Llamadas POST y GET de la API
     public <T> void postAndGetListAsync(String endpoint, Object data, Class<T> type, ApiCallback<List<T>> callback) {
         postAsync(endpoint, data, new ApiCallback<JsonObject>() {
             @Override

@@ -61,6 +61,7 @@ public class TicTackerWidget extends AppWidgetProvider {
         }
     }
 
+    // Botón de fichar / salir del widget
     private void handleClockInOut(Context context, int widgetId) {
         DatabaseHelper dbHelper = new DatabaseHelper(context);
         String username = dbHelper.getCurrentUsername(context);
@@ -125,7 +126,7 @@ public class TicTackerWidget extends AppWidgetProvider {
         });
     }
 
-    // Método para comprobar si hay fichajes activos y detener el servicio si no hay ninguno
+    // Comprobar si hay fichajes activos y detener el servicio si no hay ninguno
     private void checkForActiveClockInsAndStopService(Context context, Fichaje currentFichaje) {
         DatabaseHelper dbHelper = new DatabaseHelper(context);
         String username = dbHelper.getCurrentUsername(context);
@@ -166,7 +167,7 @@ public class TicTackerWidget extends AppWidgetProvider {
     }
      */
 
-    // Método para detener el servicio en primer plano
+    // Detener el servicio en primer plano
     private void stopForegroundService(Context context) {
         Intent serviceIntent = new Intent(context, ForegroundTimeService.class);
         serviceIntent.setAction("STOP_FOREGROUND");
@@ -397,6 +398,7 @@ public class TicTackerWidget extends AppWidgetProvider {
         }
     }
 
+    // Iniciar servicio en primer plano para notificación persistente
     private static void startForegroundService(Context context) {
         Intent serviceIntent = new Intent(context, ForegroundTimeService.class);
         serviceIntent.setAction("START_FOREGROUND");
@@ -410,6 +412,7 @@ public class TicTackerWidget extends AppWidgetProvider {
         Log.d(TAG, "Servicio ForegroundTimeService iniciado desde método estático");
     }
 
+    // Cachear datos del widget
     private static void cacheWidgetData(Context context, boolean isClockedIn, String statusText, String timeWorkedText) {
         SharedPreferences prefs = context.getSharedPreferences("WidgetCache", Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = prefs.edit();
@@ -420,6 +423,7 @@ public class TicTackerWidget extends AppWidgetProvider {
         editor.apply();
     }
 
+    // Cargar datos de caché en lugar de la BD
     private static void loadCachedWidgetData(Context context, RemoteViews views) {
         SharedPreferences prefs = context.getSharedPreferences("WidgetCache", Context.MODE_PRIVATE);
         boolean isClockedIn = prefs.getBoolean("isClockedIn", false);

@@ -11,6 +11,7 @@ public class TicTacker extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+        // Configuración de OSMdroid para mapa
         org.osmdroid.config.Configuration.getInstance().load(
                 getApplicationContext(),
                 PreferenceManager.getDefaultSharedPreferences(getApplicationContext())
@@ -20,6 +21,7 @@ public class TicTacker extends Application {
         applyLanguageFromPreferences();
     }
 
+    // Aplicar configuración de idiomas
     private void applyLanguageFromPreferences() {
         SharedPreferences prefs = getSharedPreferences("AppPrefs", MODE_PRIVATE);
         String lang = prefs.getString("language", "es");

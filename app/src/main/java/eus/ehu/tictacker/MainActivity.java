@@ -214,7 +214,7 @@ public class MainActivity extends AppCompatActivity {
         if (logoUriString != null) {
             try {
                 Uri logoUri = Uri.parse(logoUriString);
-                // Try to take permission if needed
+                // Solicitar permiso si es necesario
                 try {
                     getContentResolver().takePersistableUriPermission(
                             logoUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
@@ -229,17 +229,18 @@ public class MainActivity extends AppCompatActivity {
                 navHeaderLogo.setImageResource(R.mipmap.ic_launcher_adaptive_fore);
             }
         } else {
-            // Use default logo if no custom logo is set
+            // Usar logo por defecto si ninguno se ha seleccionado
             navHeaderLogo.setImageResource(R.mipmap.ic_launcher_adaptive_fore);
         }
     }
 
+    // Actualizar foto de perfil del menú si se modifica
     public void refreshProfileImage() {
         NavigationView navigationView = findViewById(R.id.nav_view);
         setupNavigationView(navigationView);
     }
 
-    //No necesario
+    // No necesario
     @Override
     public void onBackPressed() {
         if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
@@ -339,6 +340,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    // Comprobar consexión a Internet
     private void checkNetworkConnection() {
         NetworkConnectivityChecker connectivityChecker = NetworkConnectivityChecker.getInstance(this);
         connectivityChecker.setNetworkStateListener(new NetworkConnectivityChecker.NetworkStateListener() {
@@ -366,6 +368,8 @@ public class MainActivity extends AppCompatActivity {
         navigationView.setCheckedItem(menuItemId);
     }
 
+    // Comprobar si hay permiso para programar alarmas
+    // Se envía directamente al usuario a Ajustes para evitar problemas en algunas marcas como Samsung
     private void checkReminderPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);

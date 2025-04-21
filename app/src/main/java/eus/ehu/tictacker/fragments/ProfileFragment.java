@@ -68,7 +68,7 @@ public class ProfileFragment extends Fragment {
     private static final int REQUEST_IMAGE_CAPTURE = 1;
     private static final int REQUEST_PICK_IMAGE = 2;
 
-    // ActivityResultLaunchers
+    // ActivityResultLaunchers para poder usar cámara
     private ActivityResultLauncher<Intent> takePictureLauncher;
     private ActivityResultLauncher<PickVisualMediaRequest> pickMediaLauncher;
 
@@ -117,10 +117,9 @@ public class ProfileFragment extends Fragment {
 
         buttonSaveProfile.setOnClickListener(v -> saveProfileData());
         buttonLogout.setOnClickListener(v -> logoutUser());
-
-
     }
 
+    // Completar campos a partir de la información guardada en la base de datos
     private void loadProfileData() {
         dbHelper.getProfile(username, profile -> {
             if (profile != null) {
@@ -145,6 +144,7 @@ public class ProfileFragment extends Fragment {
         });
     }
 
+    // Mostrar selector de fechas para la fecha de nacimiento
     private void showDatePickerDialog() {
         final Calendar calendar = Calendar.getInstance();
 
@@ -177,17 +177,20 @@ public class ProfileFragment extends Fragment {
         datePickerDialog.show();
     }
 
+    // Guardar información del perfil comprobando campos y subir a la base de datos
     private void saveProfileData() {
         String name = editTextName.getText().toString().trim();
         String surname = editTextSurname.getText().toString().trim();
         String email = editTextEmail.getText().toString().trim();
         String birthdate = editTextBirthdate.getText().toString().trim();
 
+        // Comprobar que se hayan completado todos los campos
         if (name.isEmpty() || surname.isEmpty() || email.isEmpty() || birthdate.isEmpty()) {
             Toast.makeText(requireContext(), R.string.all_fields_required, Toast.LENGTH_SHORT).show();
             return;
         }
 
+        // Verificar que el email sea correcto
         if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
             editTextEmail.setError(getString(R.string.invalid_email));
             return;
@@ -207,6 +210,8 @@ public class ProfileFragment extends Fragment {
                 age--;
             }
 
+            // Comprobar que el usuario tenga al menos 18 años
+
             if (age < 18) {
                 editTextBirthdate.setError(getString(R.string.must_be_adult));
                 return;
@@ -224,6 +229,7 @@ public class ProfileFragment extends Fragment {
         profile.birthdate = birthdate;
         profile.profilePhoto = base64Image;
 
+        // Subir cambios a la base de datos
         dbHelper.updateProfile(profile, success -> {
             if (success) {
                 ((MainActivity) requireActivity()).refreshProfileImage();
@@ -235,6 +241,7 @@ public class ProfileFragment extends Fragment {
         });
     }
 
+    // Foto de perfil
     private void registerImagePickerLaunchers() {
         // Lanzar cámara
         takePictureLauncher = registerForActivityResult(
@@ -243,6 +250,7 @@ public class ProfileFragment extends Fragment {
                     if (result.getResultCode() == Activity.RESULT_OK) {
                         if (currentPhotoUri != null) {
                             try {
+                                // Guardar imagen como base64 comprimida para dejar directamente en la base de datos
                                 Bitmap bitmap = MediaStore.Images.Media.getBitmap(
                                         requireContext().getContentResolver(), currentPhotoUri);
                                 imageViewProfile.setImageBitmap(bitmap);
@@ -275,6 +283,7 @@ public class ProfileFragment extends Fragment {
         );
     }
 
+    // Dar a elegir entre hacer foto o elegir de la galería
     private void showImagePickerOptions() {
         String[] options = {getString(R.string.take_photo), getString(R.string.choose_from_gallery)};
 
@@ -314,10 +323,11 @@ public class ProfileFragment extends Fragment {
                 }
             });
 
+    // Hacer foto
     private void takePicture() {
         Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
 
-        // Create fichero para la imagen
+        // Crear fichero para la imagen
         File photoFile = null;
         try {
             String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
@@ -339,6 +349,7 @@ public class ProfileFragment extends Fragment {
         }
     }
 
+    // Guardar imagen en base64 y comprimir para que entre en la base de datos
     private String bitmapToBase64(Bitmap bitmap) {
         // Reducir tamaño a 250px para evitar restricciones de Base64
         Bitmap resizedBitmap = getResizedBitmap(bitmap, 250);
@@ -383,6 +394,7 @@ public class ProfileFragment extends Fragment {
         return "";
     }
 
+    // Redimensionar imagen para cumplir con requisitos de tamaño máximo
     private Bitmap getResizedBitmap(Bitmap image, int maxSize) {
         int width = image.getWidth();
         int height = image.getHeight();
@@ -398,6 +410,7 @@ public class ProfileFragment extends Fragment {
         return Bitmap.createScaledBitmap(image, width, height, true);
     }
 
+    // Cambiar la contraseña de un usuario
     private void changePassword() {
         String currentPassword = editTextCurrentPassword.getText().toString().trim();
         String newPassword = editTextNewPassword.getText().toString().trim();
@@ -452,6 +465,7 @@ public class ProfileFragment extends Fragment {
         });
     }
 
+    // Permite cerrar sesión
     private void logoutUser() {
         SharedPreferences sharedPreferences = requireActivity().getSharedPreferences("app_prefs", requireContext().MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPreferences.edit();
