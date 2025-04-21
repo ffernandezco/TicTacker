@@ -144,9 +144,9 @@
     <string name="on">SÍ</string>
     <string name="off">NO</string>
     <string name="reminder_time">Hora del recordatorio</string>
-    <string name="reminder_description">Recibirás una notificación a esta hora si aún no has fichado hoy.</string>
+    <string name="reminder_description">Recibirás una notificación a esta hora si aún no has fichado.</string>
     <string name="reminder_notification_title">Recordatorio de fichaje</string>
-    <string name="reminder_notification_message">Son las %s y ¡aún no has fichado hoy!</string>
+    <string name="reminder_notification_message">Son las %s y aún no has fichado hoy</string>
     <string name="clock_in_now">Fichar ahora</string>
     <string name="permission_required">Permiso requerido</string>
     <string name="exact_alarm_permission_message">Para que los recordatorios funcionen correctamente, necesitas conceder permiso para programar alarmas exactas</string>

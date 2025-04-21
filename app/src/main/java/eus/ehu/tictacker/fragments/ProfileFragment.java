@@ -47,6 +47,7 @@ import java.util.Locale;
 
 import eus.ehu.tictacker.DatabaseHelper;
 import eus.ehu.tictacker.LoginActivity;
+import eus.ehu.tictacker.MainActivity;
 import eus.ehu.tictacker.R;
 import eus.ehu.tictacker.UserProfile;
 
@@ -225,8 +226,9 @@ public class ProfileFragment extends Fragment {
 
         dbHelper.updateProfile(profile, success -> {
             if (success) {
+                ((MainActivity) requireActivity()).refreshProfileImage();
                 Toast.makeText(requireContext(), R.string.profile_saved, Toast.LENGTH_SHORT).show();
-                Navigation.findNavController(requireView()).popBackStack(); // Volver atrás
+                Navigation.findNavController(requireView()).popBackStack();
             } else {
                 Toast.makeText(requireContext(), R.string.error_saving_profile, Toast.LENGTH_SHORT).show();
             }

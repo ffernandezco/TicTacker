@@ -144,9 +144,9 @@
     <string name="on">ON</string>
     <string name="off">OFF</string>
     <string name="reminder_time">Reminder time</string>
-    <string name="reminder_description">You will receive a notification at this time if you haven\'t clocked in today yet.</string>
+    <string name="reminder_description">You will receive a notification at this time if you haven\'t clocked in yet.</string>
     <string name="reminder_notification_title">Clock-in reminder</string>
-    <string name="reminder_notification_message">It\'s %s and you haven\'t clocked in yet!</string>
+    <string name="reminder_notification_message">It\'s %s and you haven\'t clocked in yet</string>
     <string name="clock_in_now">Clock in now</string>
     <string name="permission_required">Permission required</string>
     <string name="exact_alarm_permission_message">For the reminders to work correctly, you need to grant permission to schedule exact alarms</string>

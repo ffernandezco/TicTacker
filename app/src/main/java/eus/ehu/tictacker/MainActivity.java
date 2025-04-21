@@ -197,6 +197,11 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    public void refreshProfileImage() {
+        NavigationView navigationView = findViewById(R.id.nav_view);
+        setupNavigationView(navigationView);
+    }
+
     //No necesario
     @Override
     public void onBackPressed() {
