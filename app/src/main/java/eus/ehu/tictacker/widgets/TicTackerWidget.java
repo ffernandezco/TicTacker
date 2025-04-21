@@ -7,6 +7,7 @@ import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -178,6 +179,12 @@ public class TicTackerWidget extends AppWidgetProvider {
         // Actualizar vistas de widgets
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.tictacker_widget);
 
+        // Primero cargar datos en caché para mostrar algo inmediatamente
+        loadCachedWidgetData(context, views);
+
+        // Actualizar inmediatamente con valores de caché
+        appWidgetManager.updateAppWidget(appWidgetId, views);
+
         DatabaseHelper dbHelper = new DatabaseHelper(context);
         String username = dbHelper.getCurrentUsername(context);
 
@@ -226,14 +233,16 @@ public class TicTackerWidget extends AppWidgetProvider {
                         }
 
                         // Actualizar el widget según el estado actual
+                        String statusText;
+                        String timeMessage = "";
+
                         if (isClockedIn) {
-                            views.setTextViewText(R.id.tv_widget_status,
-                                    context.getString(R.string.estado_fichado, lastClockInTime));
+                            statusText = context.getString(R.string.estado_fichado, lastClockInTime);
+                            views.setTextViewText(R.id.tv_widget_status, statusText);
                             views.setTextViewText(R.id.btn_widget_fichar,
                                     context.getString(R.string.fichar_salida));
 
                             // Mostrar tiempo sin los segundos
-                            String timeMessage;
                             if (timeRemaining[2] == 1) { // Horas extra
                                 long extraHours = timeWorked[0] / 60;
                                 long extraMinutes = timeWorked[0] % 60;
@@ -271,9 +280,12 @@ public class TicTackerWidget extends AppWidgetProvider {
 
                             // Asegurarse de que el servicio de primer plano esté activo
                             startForegroundService(context);
+
+                            // Guardar en caché
+                            cacheWidgetData(context, true, statusText, timeMessage);
                         } else {
-                            views.setTextViewText(R.id.tv_widget_status,
-                                    context.getString(R.string.estado_no_fichado));
+                            statusText = context.getString(R.string.estado_no_fichado);
+                            views.setTextViewText(R.id.tv_widget_status, statusText);
                             views.setTextViewText(R.id.btn_widget_fichar,
                                     context.getString(R.string.fichar_entrada));
 
@@ -289,14 +301,17 @@ public class TicTackerWidget extends AppWidgetProvider {
                                 if (minutesWorked > 0) {
                                     timeWorkedStr += minutesWorked + "m";
                                 }
-                                views.setTextViewText(R.id.tv_widget_time_worked,
-                                        context.getString(R.string.time_worked, timeWorkedStr));
+                                timeMessage = context.getString(R.string.time_worked, timeWorkedStr);
+                                views.setTextViewText(R.id.tv_widget_time_worked, timeMessage);
                             } else {
                                 views.setTextViewText(R.id.tv_widget_time_worked, "");
                             }
 
                             // Quitar actualizaciones cada minuto para ahorrar recursos
                             scheduleMinuteUpdates(context, false);
+
+                            // Guardar en caché
+                            cacheWidgetData(context, false, statusText, timeMessage);
                         }
 
                         // Configuración del botón
@@ -393,5 +408,36 @@ public class TicTackerWidget extends AppWidgetProvider {
         }
 
         Log.d(TAG, "Servicio ForegroundTimeService iniciado desde método estático");
+    }
+
+    private static void cacheWidgetData(Context context, boolean isClockedIn, String statusText, String timeWorkedText) {
+        SharedPreferences prefs = context.getSharedPreferences("WidgetCache", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putBoolean("isClockedIn", isClockedIn);
+        editor.putString("statusText", statusText);
+        editor.putString("timeWorkedText", timeWorkedText);
+        editor.putLong("lastUpdated", System.currentTimeMillis());
+        editor.apply();
+    }
+
+    private static void loadCachedWidgetData(Context context, RemoteViews views) {
+        SharedPreferences prefs = context.getSharedPreferences("WidgetCache", Context.MODE_PRIVATE);
+        boolean isClockedIn = prefs.getBoolean("isClockedIn", false);
+        String statusText = prefs.getString("statusText", context.getString(R.string.cargando));
+        String timeWorkedText = prefs.getString("timeWorkedText", "");
+        long lastUpdated = prefs.getLong("lastUpdated", 0);
+
+        // Usar datos solo si se han obtenido hace menos de 5 minutos
+        if (System.currentTimeMillis() - lastUpdated < 5 * 60 * 1000) {
+            views.setTextViewText(R.id.tv_widget_status, statusText);
+            views.setTextViewText(R.id.tv_widget_time_worked, timeWorkedText);
+            views.setTextViewText(R.id.btn_widget_fichar,
+                    isClockedIn ? context.getString(R.string.fichar_salida) : context.getString(R.string.fichar_entrada));
+        } else {
+            // Valores por defecto en caso de no tener caché
+            views.setTextViewText(R.id.tv_widget_status, context.getString(R.string.cargando));
+            views.setTextViewText(R.id.tv_widget_time_worked, "");
+            views.setTextViewText(R.id.btn_widget_fichar, context.getString(R.string.fichar_entrada));
+        }
     }
 }

@@ -7,6 +7,7 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.location.Location;
@@ -104,8 +105,12 @@ public class ClockInFragment extends Fragment {
         tvTimeRemaining = view.findViewById(R.id.tvTimeRemaining);
         btnFichar = view.findViewById(R.id.btnFichar);
 
+        tvTimeWorked.setText(getString(R.string.time_worked, "00:00"));
+        tvTimeRemaining.setText(getString(R.string.time_remaining, "00:00"));
+
         btnFichar.setOnClickListener(v -> checkLocationPermissionAndRegister());
 
+        loadCachedData();
         actualizarEstadoUI();
 
         timerRunnable = new Runnable() {
@@ -669,6 +674,19 @@ public class ClockInFragment extends Fragment {
         Intent serviceIntent = new Intent(requireContext(), ForegroundTimeService.class);
         serviceIntent.setAction("STOP_FOREGROUND");
         requireContext().startService(serviceIntent);
+    }
+
+    private void loadCachedData() {
+        SharedPreferences prefs = requireContext().getSharedPreferences("ClockCache", Context.MODE_PRIVATE);
+        String cachedTimeWorked = prefs.getString("lastTimeWorked", null);
+        String cachedTimeRemaining = prefs.getString("lastTimeRemaining", null);
+
+        if (cachedTimeWorked != null) {
+            tvTimeWorked.setText(getString(R.string.time_worked, cachedTimeWorked));
+        }
+        if (cachedTimeRemaining != null) {
+            tvTimeRemaining.setText(getString(R.string.time_remaining, cachedTimeRemaining));
+        }
     }
 
     @Override

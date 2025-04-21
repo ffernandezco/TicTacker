@@ -31,6 +31,8 @@ import eus.ehu.tictacker.R;
 
 public class FichajeDetailsFragment extends Fragment implements EditFichajeDialog.OnFichajeUpdatedListener {
 
+    private Fichaje defaultFichaje = new Fichaje(-1, "00/00/0000", "00:00:00", "00:00:00", 0.0, 0.0, "demo");
+    private static Fichaje cachedFichaje = null;
     private Fichaje fichaje;
     private DatabaseHelper databaseHelper;
     private TextView tvFecha, tvEntrada, tvSalida, tvLocation;
@@ -42,22 +44,33 @@ public class FichajeDetailsFragment extends Fragment implements EditFichajeDialo
         super.onCreate(savedInstanceState);
         databaseHelper = new DatabaseHelper(requireContext());
 
-        // Obtener detalles del fichaje
         if (getArguments() != null) {
             int fichajeId = getArguments().getInt("fichaje_id", -1);
             String username = databaseHelper.getCurrentUsername(requireContext());
 
-            // Obtener de la base de datos el fichaje
-            if (fichajeId != -1) {
+            if (cachedFichaje != null && cachedFichaje.id == fichajeId) {
+                fichaje = cachedFichaje;
+                updateUI();
+            } else if (fichajeId != -1) {
                 databaseHelper.obtenerFichajePorId(fichajeId, username, obtainedFichaje -> {
                     if (obtainedFichaje != null) {
                         fichaje = obtainedFichaje;
-                        updateUI();
+                        cachedFichaje = fichaje; // Almacenar en caché
+                    } else {
+                        fichaje = defaultFichaje;
                     }
+                    updateUI();
                 });
+            } else {
+                fichaje = defaultFichaje;
+                updateUI();
             }
+        } else {
+            fichaje = defaultFichaje;
+            updateUI();
         }
     }
+
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -77,6 +90,13 @@ public class FichajeDetailsFragment extends Fragment implements EditFichajeDialo
         btnVerMapa = view.findViewById(R.id.btnVerMapa);
         btnEditar = view.findViewById(R.id.btnEditar);
         mapView = view.findViewById(R.id.mapView);
+
+        // Mostrar valores por defecto mientras se carga
+        Context context = requireContext();
+        tvFecha.setText(context.getString(R.string.fecha, defaultFichaje.fecha));
+        tvEntrada.setText(context.getString(R.string.entrada, defaultFichaje.horaEntrada));
+        tvSalida.setText(context.getString(R.string.salida, defaultFichaje.horaSalida));
+        tvLocation.setText(context.getString(R.string.ubicacion_no_disponible));
 
         // Inicializar el mapView
         configureMapView();
@@ -100,37 +120,40 @@ public class FichajeDetailsFragment extends Fragment implements EditFichajeDialo
     }
 
     private void updateUI() {
-        if (fichaje == null || getView() == null) return;
+        if (getView() == null) return;
 
         Context context = requireContext();
 
-        tvFecha.setText(context.getString(R.string.fecha, fichaje.fecha));
-        tvEntrada.setText(context.getString(R.string.entrada, fichaje.horaEntrada));
+        // Utilizar los datos por defecto en caso de que no haya información disponible
+        Fichaje displayFichaje = fichaje != null ? fichaje : defaultFichaje;
 
-        String salida = fichaje.horaSalida != null ? fichaje.horaSalida : context.getString(R.string.pendiente);
+        tvFecha.setText(context.getString(R.string.fecha, displayFichaje.fecha));
+        tvEntrada.setText(context.getString(R.string.entrada, displayFichaje.horaEntrada));
+
+        String salida = displayFichaje.horaSalida != null ? displayFichaje.horaSalida : context.getString(R.string.pendiente);
         tvSalida.setText(context.getString(R.string.salida, salida));
 
-        if (fichaje.latitud == 0.0 && fichaje.longitud == 0.0) {
+        if (displayFichaje.latitud == 0.0 && displayFichaje.longitud == 0.0) {
             tvLocation.setText(context.getString(R.string.ubicacion_no_disponible));
             btnVerMapa.setEnabled(false);
-            mapView.setVisibility(View.GONE); // Oculta el mapa en caso de que no haya ubicación para el fichaje
+            mapView.setVisibility(View.GONE);
         } else {
-            tvLocation.setText(context.getString(R.string.ubicacion, fichaje.latitud, fichaje.longitud));
+            tvLocation.setText(context.getString(R.string.ubicacion, displayFichaje.latitud, displayFichaje.longitud));
             btnVerMapa.setEnabled(true);
             mapView.setVisibility(View.VISIBLE);
-            updateMapWithLocation();
+            updateMapWithLocation(displayFichaje);
         }
     }
 
-    private void updateMapWithLocation() {
-        if (mapView != null && fichaje != null && (fichaje.latitud != 0.0 || fichaje.longitud != 0.0)) {
+    private void updateMapWithLocation(Fichaje displayFichaje) {
+        if (mapView != null && displayFichaje != null && (displayFichaje.latitud != 0.0 || displayFichaje.longitud != 0.0)) {
             // Poner el mapa en la ubicación del fichaje
-            GeoPoint point = new GeoPoint(fichaje.latitud, fichaje.longitud);
+            GeoPoint point = new GeoPoint(displayFichaje.latitud, displayFichaje.longitud);
             IMapController mapController = mapView.getController();
             mapController.setCenter(point);
             mapController.setZoom(16.0);
 
-            // Añadir chincheta de localización para el fichje
+            // Añadir chincheta de localización para el fichaje
             mapView.getOverlays().clear();
             Marker marker = new Marker(mapView);
             marker.setPosition(point);
@@ -143,9 +166,11 @@ public class FichajeDetailsFragment extends Fragment implements EditFichajeDialo
     }
 
     private void openMap() {
-        if (fichaje != null && (fichaje.latitud != 0.0 || fichaje.longitud != 0.0)) {
-            String uri = "geo:" + fichaje.latitud + "," + fichaje.longitud + "?q=" +
-                    fichaje.latitud + "," + fichaje.longitud + "(" + requireContext().getString(R.string.ubicacion_fichaje) + ")";
+        Fichaje displayFichaje = fichaje != null ? fichaje : defaultFichaje;
+
+        if (displayFichaje != null && (displayFichaje.latitud != 0.0 || displayFichaje.longitud != 0.0)) {
+            String uri = "geo:" + displayFichaje.latitud + "," + displayFichaje.longitud + "?q=" +
+                    displayFichaje.latitud + "," + displayFichaje.longitud + "(" + requireContext().getString(R.string.ubicacion_fichaje) + ")";
             Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(uri));
             startActivity(intent);
         }
@@ -160,11 +185,11 @@ public class FichajeDetailsFragment extends Fragment implements EditFichajeDialo
 
     @Override
     public void onFichajeUpdated() {
-        // Recargar datos del fichaje si se actualiza
         if (fichaje != null) {
             databaseHelper.obtenerFichajePorId(fichaje.id, fichaje.username, updatedFichaje -> {
                 if (updatedFichaje != null) {
                     fichaje = updatedFichaje;
+                    cachedFichaje = fichaje; // Actualizar caché
                     updateUI();
                 }
             });

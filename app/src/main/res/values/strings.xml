@@ -16,7 +16,7 @@
     <string name="pendiente">Pendiente</string>
     <string name="ubicacion_no_disponible">Ubicación: No disponible</string>
     <string name="ubicacion">Ubicación: %1$.6f, %2$.6f</string>
-    <string name="ver_mapa">Mapa</string>
+    <string name="ver_mapa">Ver en app de Mapas</string>
     <string name="ubicacion_fichaje">Ubicación de fichaje</string>
     <string name="detalle">Detalles del fichaje:</string>
     <string name="mapa">Ver en mapa</string>
@@ -157,4 +157,5 @@
     <string name="work_end_description">Registro de salida laboral</string>
     <string name="work_session_title">Sesión de trabajo: %1$s</string>
     <string name="work_session_description">Entrada: %1$s\nSalida: %2$s</string>
+    <string name="cargando">Cargando...</string>
 </resources>
