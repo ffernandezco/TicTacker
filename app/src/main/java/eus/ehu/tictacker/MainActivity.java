@@ -214,12 +214,23 @@ public class MainActivity extends AppCompatActivity {
         if (logoUriString != null) {
             try {
                 Uri logoUri = Uri.parse(logoUriString);
+                // Try to take permission if needed
+                try {
+                    getContentResolver().takePersistableUriPermission(
+                            logoUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                } catch (Exception e) {
+                    Log.e("MainActivity", "Error obteniendo permiso de URI", e);
+                }
+                navHeaderLogo.setImageURI(null);  // Quitar logo anterior
                 navHeaderLogo.setImageURI(logoUri);
             } catch (Exception e) {
                 e.printStackTrace();
                 // Logo por defecto si hay un error
                 navHeaderLogo.setImageResource(R.mipmap.ic_launcher_adaptive_fore);
             }
+        } else {
+            // Use default logo if no custom logo is set
+            navHeaderLogo.setImageResource(R.mipmap.ic_launcher_adaptive_fore);
         }
     }
 
@@ -385,6 +396,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         checkNetworkConnection();
+        NavigationView navigationView = findViewById(R.id.nav_view);
+        applyCustomLogoToNavHeader(navigationView);
     }
 
     @Override

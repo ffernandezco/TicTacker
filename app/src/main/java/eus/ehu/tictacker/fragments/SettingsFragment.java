@@ -361,6 +361,11 @@ public class SettingsFragment extends Fragment {
         editor.putInt("reminder_minute", reminderMinute);
         editor.apply();
 
+        if (selectedLogoUri != null) {
+            editor.putString("custom_logo_uri", selectedLogoUri.toString());
+            editor.apply();
+        }
+
         // Subir cambios al servidor
         dbHelper.saveSettings(weeklyHours, workingDays, reminderEnabled, reminderHour, reminderMinute, success -> {
             requireActivity().runOnUiThread(() -> {
@@ -457,11 +462,21 @@ public class SettingsFragment extends Fragment {
         if (requestCode == PICK_IMAGE_REQUEST && resultCode == Activity.RESULT_OK && data != null && data.getData() != null) {
             selectedLogoUri = data.getData();
 
-            final int takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION;
-            requireContext().getContentResolver().takePersistableUriPermission(selectedLogoUri, takeFlags);
+            try {
+                final int takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION;
+                requireContext().getContentResolver().takePersistableUriPermission(selectedLogoUri, takeFlags);
 
-            ivLogoPreview.setImageURI(selectedLogoUri);
-            Toast.makeText(requireContext(), R.string.logo_changed, Toast.LENGTH_SHORT).show();
+                SharedPreferences prefs = requireActivity().getSharedPreferences("AppPrefs", requireContext().MODE_PRIVATE);
+                SharedPreferences.Editor editor = prefs.edit();
+                editor.putString("custom_logo_uri", selectedLogoUri.toString());
+                editor.apply();
+
+                ivLogoPreview.setImageURI(selectedLogoUri);
+                Toast.makeText(requireContext(), R.string.logo_changed, Toast.LENGTH_SHORT).show();
+            } catch (Exception e) {
+                e.printStackTrace();
+                Toast.makeText(requireContext(), "Error saving logo permission", Toast.LENGTH_SHORT).show();
+            }
         }
     }
 
