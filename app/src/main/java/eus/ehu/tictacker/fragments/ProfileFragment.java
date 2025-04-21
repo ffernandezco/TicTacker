@@ -250,12 +250,17 @@ public class ProfileFragment extends Fragment {
                     if (result.getResultCode() == Activity.RESULT_OK) {
                         if (currentPhotoUri != null) {
                             try {
-                                // Guardar imagen como base64 comprimida para dejar directamente en la base de datos
-                                Bitmap bitmap = MediaStore.Images.Media.getBitmap(
-                                        requireContext().getContentResolver(), currentPhotoUri);
-                                imageViewProfile.setImageBitmap(bitmap);
-                                base64Image = bitmapToBase64(bitmap);
-                            } catch (IOException e) {
+                                // Cargar la imagen con opciones de muestreo para evitar OutOfMemoryError
+                                Bitmap bitmap = loadSampledBitmapFromUri(currentPhotoUri);
+                                if (bitmap != null) {
+                                    imageViewProfile.setImageBitmap(bitmap);
+                                    base64Image = bitmapToBase64(bitmap);
+                                } else {
+                                    Toast.makeText(requireContext(),
+                                            R.string.error_loading_image, Toast.LENGTH_SHORT).show();
+                                }
+                            } catch (Exception e) {
+                                Log.e("ProfileFragment", "Error processing camera image", e);
                                 Toast.makeText(requireContext(),
                                         R.string.error_loading_image, Toast.LENGTH_SHORT).show();
                             }
@@ -270,11 +275,17 @@ public class ProfileFragment extends Fragment {
                 uri -> {
                     if (uri != null) {
                         try {
-                            Bitmap bitmap = MediaStore.Images.Media.getBitmap(
-                                    requireContext().getContentResolver(), uri);
-                            imageViewProfile.setImageBitmap(bitmap);
-                            base64Image = bitmapToBase64(bitmap);
-                        } catch (IOException e) {
+                            // Cargar la imagen con opciones de muestreo para evitar OutOfMemoryError
+                            Bitmap bitmap = loadSampledBitmapFromUri(uri);
+                            if (bitmap != null) {
+                                imageViewProfile.setImageBitmap(bitmap);
+                                base64Image = bitmapToBase64(bitmap);
+                            } else {
+                                Toast.makeText(requireContext(),
+                                        R.string.error_loading_image, Toast.LENGTH_SHORT).show();
+                            }
+                        } catch (Exception e) {
+                            Log.e("ProfileFragment", "Error processing gallery image", e);
                             Toast.makeText(requireContext(),
                                     R.string.error_loading_image, Toast.LENGTH_SHORT).show();
                         }
@@ -351,8 +362,8 @@ public class ProfileFragment extends Fragment {
 
     // Guardar imagen en base64 y comprimir para que entre en la base de datos
     private String bitmapToBase64(Bitmap bitmap) {
-        // Reducir tamaño a 250px para evitar restricciones de Base64
-        Bitmap resizedBitmap = getResizedBitmap(bitmap, 250);
+        // Reducir tamaño a 160px para evitar restricciones de Base64
+        Bitmap resizedBitmap = getResizedBitmap(bitmap, 160);
 
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
 
@@ -360,38 +371,34 @@ public class ProfileFragment extends Fragment {
         // Tener en cuenta que por restricción tiene que ser inferior a 10240 bytes en BD
         int quality = 50; // Reducir calidad (50 %)
         int maxSize = 9000;
-        boolean done = false;
 
-        while (!done) {
+        while (true) {
             byteArrayOutputStream.reset(); // Eliminar intento anterior
             resizedBitmap.compress(Bitmap.CompressFormat.JPEG, quality, byteArrayOutputStream);
             byte[] byteArray = byteArrayOutputStream.toByteArray();
 
             if (byteArray.length <= maxSize) {
-                // Encontrar tamaño aleatorio
+                // Encontrar tamaño adecuado
                 return Base64.encodeToString(byteArray, Base64.DEFAULT);
             }
 
             // Casos extremos en los que debe reducirse drásticamente calidad
             if (quality > 10) {
-                // Probar con la menor calidad de JPEG
+                // Probar con menor calidad de JPEG
                 quality -= 10;
             } else {
                 // Si aún no ocupa menos, reducir dimensiones (aún más)
                 int newSize = (int)(resizedBitmap.getWidth() * 0.8f);
                 if (newSize < 50) {
-                    // Crear imagen en Base64 con reducción de dimensiones y calidad
+                    // Crear imagen en Base64 con reducción de dimensiones y calidad mínima
                     byteArrayOutputStream.reset();
-                    resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 10, byteArrayOutputStream);
+                    getResizedBitmap(bitmap, 50).compress(Bitmap.CompressFormat.JPEG, 10, byteArrayOutputStream);
                     byte[] finalByteArray = byteArrayOutputStream.toByteArray();
                     return Base64.encodeToString(finalByteArray, Base64.DEFAULT);
                 }
                 resizedBitmap = getResizedBitmap(bitmap, newSize);
             }
         }
-
-        // Nunca debería alcanzarse en principio
-        return "";
     }
 
     // Redimensionar imagen para cumplir con requisitos de tamaño máximo
@@ -463,6 +470,37 @@ public class ProfileFragment extends Fragment {
                 });
             }
         });
+    }
+
+    // Cargar imagen con muestreo para reducir el uso de memoria con imágenes grandes
+    private Bitmap loadSampledBitmapFromUri(Uri uri) throws IOException {
+        // Primero, obtenemos las dimensiones del bitmap
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true;
+
+        try (java.io.InputStream input = requireContext().getContentResolver().openInputStream(uri)) {
+            BitmapFactory.decodeStream(input, null, options);
+        }
+
+        // Calcular el factor de muestreo
+        int targetSize = 1024; // Tamaño objetivo máximo
+        int scaleFactor = 1;
+
+        if (options.outHeight > targetSize || options.outWidth > targetSize) {
+            scaleFactor = Math.max(
+                    Math.round((float) options.outHeight / targetSize),
+                    Math.round((float) options.outWidth / targetSize)
+            );
+        }
+
+        // Decodificar el bitmap con el factor de muestreo
+        options = new BitmapFactory.Options();
+        options.inSampleSize = scaleFactor;
+        options.inJustDecodeBounds = false;
+
+        try (java.io.InputStream input = requireContext().getContentResolver().openInputStream(uri)) {
+            return BitmapFactory.decodeStream(input, null, options);
+        }
     }
 
     // Permite cerrar sesión

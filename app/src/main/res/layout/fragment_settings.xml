@@ -325,8 +325,8 @@
 
                         <Button
                             android:id="@+id/btnDecreaseReminderHour"
-                            android:layout_width="48dp"
-                            android:layout_height="48dp"
+                            android:layout_width="38dp"
+                            android:layout_height="38dp"
                             android:text="-"
                             android:textSize="24sp"
                             android:textAlignment="center"
@@ -343,8 +343,8 @@
 
                         <Button
                             android:id="@+id/btnIncreaseReminderHour"
-                            android:layout_width="48dp"
-                            android:layout_height="48dp"
+                            android:layout_width="38dp"
+                            android:layout_height="38dp"
                             android:text="+"
                             android:textSize="24sp"
                             android:textAlignment="center"
@@ -368,8 +368,8 @@
 
                         <Button
                             android:id="@+id/btnDecreaseReminderMinute"
-                            android:layout_width="48dp"
-                            android:layout_height="48dp"
+                            android:layout_width="38dp"
+                            android:layout_height="38dp"
                             android:text="-"
                             android:textSize="24sp"
                             android:textAlignment="center"
@@ -386,8 +386,8 @@
 
                         <Button
                             android:id="@+id/btnIncreaseReminderMinute"
-                            android:layout_width="48dp"
-                            android:layout_height="48dp"
+                            android:layout_width="38dp"
+                            android:layout_height="38dp"
                             android:text="+"
                             android:textSize="24sp"
                             android:textAlignment="center"
