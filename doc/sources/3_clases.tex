@@ -1,4 +1,4 @@
-\textit{TicTacker} hace uso de diferentes clases que se comunican entre sí y que utilizan los elementos XML de Android para gestionar la vista correspondiente. Adicionalmente, se hace uso de una base de datos SQLite para gestionar los usuarios, los fichajes y las configuraciones personalizadas.
+\textit{TicTacker} hace uso de diferentes clases que se comunican entre sí y que utilizan los elementos XML de Android para gestionar la vista correspondiente. Adicionalmente, se hace uso de una base de datos MySQL desde un servidor con PHP para gestionar los usuarios, los fichajes, los perfiles, los tokens de FCM y las configuraciones personalizadas.
 
 \subsection{Clases}
 La aplicación cuenta con diferentes clases Java diferenciadas que dan respuesta a una o varias de las funcionalidades de la aplicación. A continuación se describen las siguientes clases utilizadas, pudiendo ver las relaciones entre las mismas por medio de diagrama de clases de la Figura \ref{fig:diagrama}.
@@ -7,15 +7,18 @@ La aplicación cuenta con diferentes clases Java diferenciadas que dan respuesta
 \begin{itemize}
   \item \textbf{MainActivity}: actividad principal que se encarga de gestionar la navegación y la interfaz de usuario principal de la aplicación.
   \item \textbf{LoginActivity}: gestiona la autentificación de usuarios existentes, validando credenciales y guardando la sesión.
-  \item \textbf{SignupActivity}: gestiona el registro de nuevos usuarios, incluyendo validación de los datos, que no se repitan usuarios y creación de cuentas.
-  \item \textbf{SettingsActivity}: ofrece opciones de personalización de la aplicación, como cambiar el idioma o la jornada laboral.
+  \item \textbf{SignupActivity}: gestiona el registro de nuevos usuarios, incluyendo validación de los datos, que no se repitan nombres de usuario y creación de cuentas junto con un perfil básico a partir de los datos introducidos.
+  \item \textbf{SettingsActivity}: ofrece opciones de personalización de la aplicación, como cambiar el idioma, la jornada laboral, el logotipo o los recordatorios de fichaje.
+  \item \textbf{NoInternetActivity}: se lanza en el momento en el que se detecta que no se cuenta con conexión a Internet, bloqueando el uso de la app.
 \end{itemize}
 
 \subsubsection{Fragments}
 \begin{itemize}
   \item \textbf{ClockInFragment}: fragment que permite a los usuarios registrar sus fichajes, mostrando el estado actual y el tiempo trabajado.
+  \item \textbf{FichajeDetailsFragment}: permite a los usuarios ver los detalles de un fichaje concreto seleccionado del historial, dejando ver la ubicación en un mapa de OpenStreetMap en caso de estar disponible.
   \item \textbf{HistoryFragment}: fragment que muestra el historial de fichajes del usuario, permitiendo exportar e importar datos por medio de ficheros CSV.
   \item \textbf{SettingsFragment}: fragment que permite a los usuarios ajustar sus preferencias, como las horas de trabajo semanales y los días laborables.
+  \item \textbf{EditFichajeDialog}: dialog fragment utilizado a la hora de editar la hora de entrada y/o salida de un fichaje existente en la aplicación.
 \end{itemize}
 
 \subsubsection{Adaptadores}
@@ -25,15 +28,31 @@ La aplicación cuenta con diferentes clases Java diferenciadas que dan respuesta
 
 \subsubsection{Clases generales}
 \begin{itemize}
-  \item \textbf{TicTacker}: clase principal de la aplicación que se encarga de aplicar las preferencias de usuario al iniciar.
+  \item \textbf{TicTacker}: clase principal de la aplicación que se encarga de aplicar las preferencias de usuario al iniciar, así como de instanciar OSMdroid para poder utilizar los mapas de OpenStreetMap.
   \item \textbf{Fichaje}: entidad que representa un fichaje con los atributos correspondiente, usado para instanciar objetos fácilmente con su fecha, hora de entrada, hora de salida, latitud, longitud y nombre de usuario para almacenar en la base de datos.
   \item \textbf{WorkTimeCalculator}: clase que proporciona métodos para calcular el tiempo trabajado y el tiempo restante.
+  \item \textbf{ApiClient}: clase utilizada para realizar las consultas POST y GET a la API del servidor, permitiendo realizar modificaciones sobre la base de datos.
+  \item \textbf{NetworkConnectivityChecker}: clase utilizada para comprobar si se tiene conexión a Internet al ser requerida para funcionar. En caso de no tener conexión, se lanza \textit{NoInternetActivity}.
+  \item \textbf{UserProfile}: clase utilizada para gestionar los perfiles de usuario, almacenando valores como el nombre, el email o la foto de perfil.
 \end{itemize}
 
 \subsubsection{Helpers}
 \begin{itemize}
-  \item \textbf{DatabaseHelper}: gestiona la base de datos SQLite, incluyendo la creación de tablas y las operaciones.
+  \item \textbf{DatabaseHelper}: gestiona la base de datos MySQL realizando llamadas al \textit{DatabaseWorker} que, a su vez, utiliza \textit{ApiClient} para llamar a la API y hacer cambios en el servidor.
   \item \textbf{NotificationHelper}: clase que gestiona la creación y envío de notificaciones.
+\end{itemize}
+
+\subsubsection{Receivers}
+\begin{itemize}
+  \item \textbf{BootReceiver}: clase auxiliar utilizada para reconfigurar las alarmas de los recordatorios de fichajes en caso de que el dispositivo se reinicie.
+  \item \textbf{ClockInReminderReceiver}: clase que interpreta y gestiona las alarmas enviadas por la clase \textit{ClockInReminderService} y que se encarga de generar las notificaciones de recordatorios de fichajes.
+\end{itemize}
+
+\subsubsection{Services}
+\begin{itemize}
+  \item \textbf{ClockInReminderService}: clase utilizada para enviar alarmas para recordar al usuario que inicie un fichaje si se supera una hora determinada y no se ha fichado.
+  \item \textbf{ForegroundTimeService}: servicio empleado para gestionar la actividad de fichaje en primer plano (\textit{Foreground}), lanzando una notificación silenciosa persistente para informar del estado del fichaje.
+  \item \textbf{MyFirebaseMessagingService}: servicio utilizado para registrar los tokens FCM de Firebase y recibir notificaciones enviadas a distancia.
 \end{itemize}
 
 \subsubsection{Eventos}
@@ -41,8 +60,14 @@ La aplicación cuenta con diferentes clases Java diferenciadas que dan respuesta
   \item \textbf{FichajeEvents}: clase que gestiona los eventos relacionados con los fichajes, permitiendo notificar cambios a los listeners registrados.
 \end{itemize}
 
+\subsubsection{Widgets}
+\begin{itemize}
+  \item \textbf{TicTackerWidget}: clase utilizada para gestionar todos los aspectos relacionados con el widget de la aplicación.
+\end{itemize}
+
 \subsubsection{Workers}
 \begin{itemize}
+  \item \textbf{DatabaseWorker}: worker que envía y recibe las consultas en formato JSON realizadas a la API para realizar cambios sobre la base de datos.
   \item \textbf{WorkTimeCheckWorker}: worker que comprueba periódicamente el tiempo trabajado y envía notificaciones al usuario si alcanza su jornada laboral.
 \end{itemize}
 
@@ -57,7 +82,7 @@ La aplicación cuenta con diferentes clases Java diferenciadas que dan respuesta
 
 \subsection{Base de datos}
 
-Además de las \textit{SharedPreferences}, para gestionar la persistencia de la aplicación se hace uso de una base de datos de tipo SQLite. La base de datos está definida por la clase \textit{DatabaseHelper}, que extiende de \textit{SQLiteOpenHelper}, y contiene las siguientes tablas:
+Además de las \textit{SharedPreferences}, para gestionar la persistencia de la aplicación se hace uso de una base de datos de tipo MySQL controlada desde un servidor PHP, que contiene las siguientes tablas:
 
 \begin{itemize}
   \item \textbf{Tabla Fichajes}: almacena la información sobre los fichajes de los usuarios.
