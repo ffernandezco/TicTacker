@@ -1,5 +1,5 @@
 <?php
-require_once 'db_connect.php';
+require_once 'db_connect.php'; # Conexión MySQL
 
 header('Content-Type: application/json');
 
@@ -9,8 +9,11 @@ $username = isset($data['username']) ? $data['username'] : '';
 
 $response = ["success" => false, "data" => []];
 
+# Operaciones sobre la tabla de fichajes
+
 switch ($action) {
     case 'insert':
+        # Insertar fichaje
         $query = "INSERT INTO fichajes (fecha, hora_entrada, latitud, longitud, username) VALUES (?, ?, ?, ?, ?)";
         $stmt = $con->prepare($query);
         $stmt->bind_param("ssdds",
@@ -26,6 +29,7 @@ switch ($action) {
         break;
 
     case 'update':
+        # Actualizar fichaje
         $query = "UPDATE fichajes SET hora_salida = ?, latitud = ?, longitud = ? WHERE id = ? AND username = ?";
         $stmt = $con->prepare($query);
         $horaSalida = !empty($data['hora_salida']) ? $data['hora_salida'] : null;
@@ -39,6 +43,7 @@ switch ($action) {
         break;
 
     case 'get_all':
+        # Obtener todos los fichajes existentes
         $query = "SELECT id, fecha, hora_entrada, hora_salida, latitud, longitud, username
                   FROM fichajes
                   WHERE username = ?
@@ -65,6 +70,7 @@ switch ($action) {
         break;
 
     case 'get_today':
+        # Obtener fichajes de ficha actual
         $query = "SELECT id, fecha, hora_entrada, hora_salida, latitud, longitud, username
                   FROM fichajes
                   WHERE fecha = ? AND username = ?
@@ -91,6 +97,7 @@ switch ($action) {
         break;
 
     case 'get_last':
+        # Obtener fichaje más reciente
         $query = "SELECT id, fecha, hora_entrada, hora_salida, latitud, longitud, username
                   FROM fichajes
                   WHERE fecha = ? AND username = ?
@@ -116,6 +123,7 @@ switch ($action) {
         break;
 
     case 'delete_all':
+        # Eliminar todos los fichajes de un usuario
         $query = "DELETE FROM fichajes WHERE username = ?";
         $stmt = $con->prepare($query);
         $stmt->bind_param("s", $username);
@@ -123,6 +131,7 @@ switch ($action) {
         break;
 
     case 'update_complete':
+        # Actualizar un fichaje
         $query = "UPDATE fichajes SET hora_entrada = ?, hora_salida = ?, latitud = ?, longitud = ? WHERE id = ? AND username = ?";
         $stmt = $con->prepare($query);
         $horaSalida = !empty($data['hora_salida']) ? $data['hora_salida'] : null;
@@ -137,6 +146,7 @@ switch ($action) {
         break;
 
     case 'insert_complete':
+        # Añadir un nuevo fichaje completo
         $query = "INSERT INTO fichajes (fecha, hora_entrada, hora_salida, latitud, longitud, username) VALUES (?, ?, ?, ?, ?, ?)";
         $stmt = $con->prepare($query);
         $horaSalida = !empty($data['hora_salida']) ? $data['hora_salida'] : null;
@@ -154,6 +164,7 @@ switch ($action) {
         break;
 
     case 'get_by_id':
+        # Obtener fichaje por ID
         $query = "SELECT id, fecha, hora_entrada, hora_salida, latitud, longitud, username
                   FROM fichajes
                   WHERE id = ? AND username = ?";

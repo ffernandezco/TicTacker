@@ -1,7 +1,9 @@
 <?php
-require_once 'db_connect.php';
+require_once 'db_connect.php'; # Conexión MySQL
 
 header('Content-Type: application/json');
+
+# Autenticar usuario verificando que su contraseña es correcta
 
 $data = json_decode(file_get_contents('php://input'), true);
 $username = $data['username'];

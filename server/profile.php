@@ -1,5 +1,5 @@
 <?php
-require_once 'db_connect.php';
+require_once 'db_connect.php'; # Conexión MySQL
 
 header('Content-Type: application/json');
 
@@ -8,7 +8,10 @@ $action = $data['action'];
 
 $response = ["success" => false, "data" => []];
 
+# Operaciones sobre la tabla de perfiles
+
 if ($action == 'get_profile') {
+    # Obtener perfil
     $query = "SELECT name, surname, birthdate, email, profile_photo FROM user_profiles WHERE username = ?";
     $stmt = $con->prepare($query);
     $stmt->bind_param("s", $data['username']);
@@ -21,6 +24,7 @@ if ($action == 'get_profile') {
     }
     $stmt->close();
 } elseif ($action == 'update_profile') {
+    # Actualizar perfil
     // Comprobar si el perfil existe
     $checkQuery = "SELECT id FROM user_profiles WHERE username = ?";
     $checkStmt = $con->prepare($checkQuery);

@@ -1,4 +1,8 @@
 <?php
+
+# Funciones JWT de PHP compiladas necesarias para Firebase y FCM
+# https://github.com/firebase/php-jwt
+
 function base64url_encode($data) {
     return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
 }

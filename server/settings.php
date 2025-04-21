@@ -1,5 +1,5 @@
 <?php
-require_once 'db_connect.php';
+require_once 'db_connect.php'; # Conexión MySQL
 
 header('Content-Type: application/json');
 
@@ -8,10 +8,13 @@ $action = $data['action'];
 
 $response = ["success" => false, "data" => []];
 
+# Operaciones sobre la tabla de ajustes
+
 if ($action == 'save') {
+    # Guardar configuraciones
     // Verificar que los datos requeridos están presentes
     if (!isset($data['weekly_hours']) || !isset($data['working_days'])) {
-        $response["error"] = "Missing required parameters";
+        $response["error"] = "Faltan parámetros";
         echo json_encode($response);
         exit;
     }
@@ -37,6 +40,7 @@ if ($action == 'save') {
     $response["success"] = $stmt->execute();
     $stmt->close();
 } elseif ($action == 'get') {
+      # Obtener configuraciones guardadas
       $query = "SELECT weekly_hours, working_days, reminder_enabled, reminder_hour, reminder_minute FROM settings LIMIT 1";
       $result = $con->query($query);
 
