@@ -44,6 +44,11 @@ Pulsando sobre la sección de “Ajustes” en el menú de la aplicación, se ac
 
 Para obtener la mejor experiencia posible, se permite elegir, tal y como se muestra en la Figura \ref{fig:settings-1}, entre Español e Inglés como idiomas, siendo suficiente con elegir en el desplegable el preferido para configurarlo como el idioma por defecto para toda la aplicación. A continuación, el usuario deberá completar los datos de su jornada laboral, especificando los días laborables y las horas que se trabaja a la semana usando los controles. Esta información permite a la aplicación calcular las horas que se trabajará cada día, así como enviar notificaciones en caso de superar la previsión diaria y mostrar un cuadro de diálogo si se trata de salir antes de lo previsto. También se puede configurar una alerta para recordar fichar, de modo que si se alcanza dicha hora y no se ha registrado ningún fichaje, se recibirá una notificación. Esta funcionalidad hace uso de las alarmas programadas de Android, por lo que funciona incluso aunque la app esté cerrada, pero es preciso habilitar el permiso correspondiente.
 
+\begin{tcolorbox}
+    [colback=black!5!white,colframe=black!75!black,fonttitle=\bfseries,title=Sincronización con Internet]
+     Como la idea es que cada empresa con interés en la aplicación tenga su propia instancia de la misma, y se entiende que todos los empleados serán iguales a juicio de la empresa, algunos de los campos de configuración son sincronizados con Internet y, por tanto, realizar un cambio en un dispositivo hace que se modifique para todos los usuarios.
+    \end{tcolorbox}
+
 De forma opcional, es posible incluir una imagen como logotipo, que se mostrará en el menú de la aplicación tal y como ilustra la Figura \ref{fig:settings-3}. Para ello, basta con pulsar sobre el botón de “Cambiar” y elegir el nuevo logotipo en el explorador, como muestra la Figura \ref{fig:settings-2}. Debe ser un fichero de imagen, y se recomienda que sea un PNG con fondo transparente y un color claro para mejor visibilidad. En caso de querer restaurar el logotipo por defecto, puede usarse el botón de “Quitar”.
 
 De forma adicional, esta pantalla también permite cerrar sesión para cambiar de usuario, lo que nos llevaría directamente a la pantalla de inicio de sesión, así como eliminar los datos de fichaje almacenados, lo que no se recomienda salvo que se hayan exportado previamente.
@@ -146,4 +151,17 @@ Desde esta misma sección, existe también la opción de cambiar la contraseña,
      \end{subfigure}
         \caption{Opciones de personalización de perfil de la aplicación}
         \label{fig:perfiles}
+\end{figure}
+
+\subsection{Envío de notificaciones mediante FCM}
+
+La aplicación cuenta con el servicio de recepción de notificaciones push a través del servicio Cloud Messaging de Firebase, lo que quiere decir que existe la posibilidad de enviar notificaciones de forma remota a los usuarios. Para ello, se recoge un token cada vez que la aplicación es instalada en un nuevo dispositivo y se inicia sesión en la misma\footnote{Por tanto, si se inicia sesión en un nuevo dispositivo con un nuevo usuario, el nuevo token quedará asignado a dicho usuario y, por tanto, se dejarán de recibir notificaciones en el dispositivo anterior. Se entiende que cada empleado utilizará un solo teléfono móvil para fichar.}, que se almacena en la base de datos.
+
+Tal y como se muestra en la Figura \ref{fig:notificacion}, accediendo al fichero \texttt{notificar.php} del servidor, disponible en la dirección de Internet \url{http://ec2-51-44-167-78.eu-west-3.compute.amazonaws.com/ffernandez032/WEB/notificar.php}, es posible enviar una notificación de forma remota a todos los usuarios. Las notificaciones se reciben tanto si la aplicación está abierta como en caso contrario, por lo que es una buena vía de comunicación para mensajes urgentes.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{root/notificacion.png}
+    \caption{Pantalla de envío de notificación remota}
+    \label{fig:notificacion}
 \end{figure}

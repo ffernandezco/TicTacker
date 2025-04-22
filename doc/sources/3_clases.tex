@@ -130,11 +130,11 @@ Para ejecutar consultas sobre la base de datos MySQL mencionada anteriormente, a
   \item \textbf{auth\_user.php}: verifica que un usuario y contraseña coinciden con el \textit{hash} almacenado en la base de datos para permitir su autenticación.
   \item \textbf{fcm\_tokens.php}: se encarga de almacenar los tokens FCM de Firebase y de actualizar si es necesario el usuario al que está asociado cada uno.
   \item \textbf{fichajes.php}: gestiona todas las operaciones relacionadas con los fichajes, incluyendo añadirlos, modificarlos o eliminarlos.
-  \item \textbf{firebase\_service\_account.json}: fichero extraído del gestor de cuentas de servicio IAM de Google que contiene los datos necesarios para enviar mensajes usando la mensajería Cloud Messagging de Firebase. Por motivos de seguridad, no se ha incluido en el repositorio de GitHub.
+  \item \textbf{firebase\_service\_account.json}: fichero extraído del gestor de cuentas de servicio IAM de Google que contiene los datos necesarios para enviar mensajes usando la mensajería Cloud Messaging de Firebase. Por motivos de seguridad, no se ha incluido en el repositorio de GitHub.
   \item \textbf{jwt\_utils.php}: adaptación compilada del \href{https://github.com/firebase/php-jwt}{repositorio \texttt{firebase/php-jwt}} para gestionar la autenticación de Firebase desde PHP.
   \item \textbf{notificar.php}: habilita una interfaz HTML que permite enviar una notificación a todos los usuarios con un token FCM almacenado en la base de datos. Está disponible de forma pública en la dirección \url{http://ec2-51-44-167-78.eu-west-3.compute.amazonaws.com/ffernandez032/WEB/notificar.php}.
   \item \textbf{profile.php}: gestiona todas las operaciones relacionadas con los perfiles de usuario, como modificar o añadir el nombre, los apellidos, la foto de perfil o el correo electrónico.
-  \item \textbf{send\_notification\_v1.php}: permite enviar notificaciones a los usuarios a través del token usando Firebase Cloud Messagging (FCM).
+  \item \textbf{send\_notification\_v1.php}: permite enviar notificaciones a los usuarios a través del token usando Firebase Cloud Messaging (FCM).
   \item \textbf{settings.php}: gestiona todas las operaciones relacionadas con las configuraciones, como la configuración de la jornada o el envío de notificaciones.
   \item \textbf{users.php}: gestiona todas las operaciones relacionadas con los usuarios, como añadir un usuario o modificar la contraseña asociada.
 \end{itemize}
